@@ -29,8 +29,4 @@ pipelines:
           - aws s3 cp code.zip s3://s-tracker-kpi-insights/code.zip
 
           # Deploy to Lambda
-          - aws lambda update-function-code \
-              --function-name Automated_KPI_Insights \
-              --s3-bucket s-tracker-kpi-insights \
-              --s3-key code.zip \
-              --region ap-south-1
+          - aws lambda update-function-code --function-name Automated_KPI_Insights --s3-bucket s-tracker-kpi-insights --s3-key code.zip --region ap-south-1
