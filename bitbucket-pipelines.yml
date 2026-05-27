@@ -1,41 +1,44 @@
-name: Deploy Lambda Function
+image: python:3.12
 
-on:
-  push:
-    branches: [ main ]
+pipelines:
+  default:
+    - step:
+        name: "Deploy Lambda Function"
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+        script:
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+          # Install zip
+          - apt-get update
+          - apt-get install -y zip
 
-      - name: Install zip
-        run: sudo apt-get update && sudo apt-get install -y zip
+          # Install Python Dependencies
+          - pip install -r requirements.txt -t .
 
-      - name: Create deployment package
-        run: |
-          zip -r code.zip . -x "*.git*" ".github/*" "*.DS_Store"
+          # Create Deployment ZIP
+          - zip -r code.zip . -x "*.git*" "bitbucket-pipelines.yml" "__pycache__/*"
 
-      # ✅ Configure AWS credentials using the official AWS action
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          aws-region: ap-south-1
+          # Upload ZIP to S3
+          - pipe: atlassian/aws-s3-deploy:1.1.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_KEY
+              AWS_DEFAULT_REGION: "ap-south-1"
 
-      # ✅ Upload zip file to S3
-      - name: Upload to S3
-        run: |
-          aws s3 cp code.zip s3://bitbucketforStracterKPI/lambda/code.zip
+              S3_BUCKET: "s-tracker-kpi-insights"
 
-      # ✅ Deploy Lambda from S3
-      - name: Deploy Lambda from S3
-        run: |
-          aws lambda update-function-code \
-            --function-name arn:aws:lambda:ap-south-1:640168441407:function:Automated_KPI_Insights \
-            --s3-bucket s-tracker-kpi-insights  \
-            --s3-key lambda/code.zip
+              LOCAL_PATH: "code.zip"
+
+          # Deploy Lambda using S3 ZIP
+          - pipe: atlassian/aws-lambda-deploy:1.7.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_KEY
+              AWS_DEFAULT_REGION: "ap-south-1"
+
+              FUNCTION_NAME: "Automated_KPI_Insights"
+
+              COMMAND: "update"
+
+              S3_BUCKET: "s-tracker-kpi-insights"
+
+              S3_KEY: "code.zip"
