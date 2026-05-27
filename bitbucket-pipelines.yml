@@ -30,4 +30,4 @@ pipelines:
               --function-name Automated_KPI_Insights \
               --s3-bucket s-tracker-kpi-insights \
               --s3-key code.zip \
-              --region ap-south-
+              --region ap-south-1
