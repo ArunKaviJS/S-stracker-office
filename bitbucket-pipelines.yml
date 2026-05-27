@@ -11,11 +11,14 @@ pipelines:
           - apt-get update
           - apt-get install -y zip
 
-          # Install Python Dependencies
+          # Install Dependencies
           - pip install -r requirements.txt -t .
 
-          # Create Deployment ZIP
-          - zip -r code.zip . -x "*.git*" "bitbucket-pipelines.yml" "__pycache__/*"
+          # Create ZIP
+          - zip -r code.zip . -x "*.git*" "__pycache__/*" "*.pyc"
+
+          # Verify ZIP Exists
+          - ls -lh
 
           # Upload ZIP to S3
           - pipe: atlassian/aws-s3-deploy:1.1.0
@@ -28,7 +31,7 @@ pipelines:
 
               LOCAL_PATH: "code.zip"
 
-          # Deploy Lambda using S3 ZIP
+          # Deploy Lambda
           - pipe: atlassian/aws-lambda-deploy:1.7.0
             variables:
               AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
