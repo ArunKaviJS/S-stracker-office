@@ -11,37 +11,27 @@ pipelines:
           - apt-get update
           - apt-get install -y zip
 
-          # Install Dependencies
+          # Install dependencies
           - pip install -r requirements.txt -t .
+
+          # Install AWS CLI
+          - pip install awscli
+
+          # Remove old ZIP
+          - rm -f code.zip
 
           # Create ZIP
           - zip -r code.zip . -x "*.git*" "__pycache__/*" "*.pyc"
 
-          # Verify ZIP Exists
+          # Verify ZIP exists
           - ls -lh
 
           # Upload ZIP to S3
-          - pipe: atlassian/aws-s3-deploy:1.1.0
-            variables:
-              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_KEY
-              AWS_DEFAULT_REGION: "ap-south-1"
-
-              S3_BUCKET: "s-tracker-kpi-insights"
-
-              LOCAL_PATH: "code.zip"
+          - aws s3 cp code.zip s3://s-tracker-kpi-insights/code.zip
 
           # Deploy Lambda
-          - pipe: atlassian/aws-lambda-deploy:1.7.0
-            variables:
-              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_KEY
-              AWS_DEFAULT_REGION: "ap-south-1"
-
-              FUNCTION_NAME: "Automated_KPI_Insights"
-
-              COMMAND: "update"
-
-              S3_BUCKET: "s-tracker-kpi-insights"
-
-              S3_KEY: "code.zip"
+          - aws lambda update-function-code \
+              --function-name Automated_KPI_Insights \
+              --s3-bucket s-tracker-kpi-insights \
+              --s3-key code.zip \
+              --region ap-south-1
