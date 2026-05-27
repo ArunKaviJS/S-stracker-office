@@ -1,0 +1,41 @@
+name: Deploy Lambda Function
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install zip
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Create deployment package
+        run: |
+          zip -r code.zip . -x "*.git*" ".github/*" "*.DS_Store"
+
+      # ✅ Configure AWS credentials using the official AWS action
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ap-south-1
+
+      # ✅ Upload zip file to S3
+      - name: Upload to S3
+        run: |
+          aws s3 cp code.zip s3://bitbucketforStracterKPI/lambda/code.zip
+
+      # ✅ Deploy Lambda from S3
+      - name: Deploy Lambda from S3
+        run: |
+          aws lambda update-function-code \
+            --function-name arn:aws:lambda:ap-south-1:640168441407:function:Automated_KPI_Insights \
+            --s3-bucket s-tracker-kpi-insights  \
+            --s3-key lambda/code.zip
