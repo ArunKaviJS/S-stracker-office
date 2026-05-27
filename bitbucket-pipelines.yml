@@ -8,22 +8,27 @@ pipelines:
         script:
 
           - apt-get update
-          - apt-get install -y zip
+          - apt-get install -y zip unzip curl
 
+          # Install AWS CLI
+          - pip install awscli
+
+          # Install dependencies
           - pip install -r requirements.txt -t .
 
+          # AWS Credentials
           - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
           - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_KEY
           - export AWS_DEFAULT_REGION=ap-south-1
 
+          # Create deployment zip
           - rm -f code.zip
-
           - zip -r code.zip . -x "*.git*" "__pycache__/*" "*.pyc"
 
-          - ls -lh
-
+          # Upload to S3
           - aws s3 cp code.zip s3://s-tracker-kpi-insights/code.zip
 
+          # Deploy to Lambda
           - aws lambda update-function-code \
               --function-name Automated_KPI_Insights \
               --s3-bucket s-tracker-kpi-insights \
