@@ -4,7 +4,7 @@ from io import StringIO
 
 s3 = boto3.client("s3")
 
-BUCKET_NAME = "your-chatbot-results"
+BUCKET_NAME = "ai-smart-tracker-chatbot-bitbucket"
 
 
 def upload_dataframe_to_s3(df):
