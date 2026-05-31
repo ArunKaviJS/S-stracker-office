@@ -1,101 +1,60 @@
-import os
+import json
 
-from sqlalchemy import create_engine
-
-from fetch_data_and_copy import fetch_and_copy_data
-
-from Idle_Trolleys_Logic import process_idle_trolleys
-
-from Geozone_Performance_Logic import (
-    process_underperforming_geozones
+from llm import (
+    generate_sql,
+    get_client
 )
 
-# ============================================================
-# SOURCE DB
-# ============================================================
+from db import execute_query
 
-SOURCE_HOST = os.getenv("SOURCE_DB_HOST")
-SOURCE_USER = os.getenv("SOURCE_DB_USER")
-SOURCE_PASSWORD = os.getenv("SOURCE_DB_PASSWORD")
-SOURCE_DATABASE = os.getenv("SOURCE_DB_NAME")
+from router import route
 
-# ============================================================
-# DESTINATION DB
-# ============================================================
+from config import AZURE_OPENAI_DEPLOYMENT
 
-DEST_HOST = os.getenv("DEST_DB_HOST")
-DEST_USER = os.getenv("DEST_DB_USER")
-DEST_PASSWORD = os.getenv("DEST_DB_PASSWORD")
-DEST_DATABASE = os.getenv("DEST_DB_NAME")
-
-# ============================================================
-# SQLALCHEMY CONNECTIONS
-# ============================================================
-
-source_engine = create_engine(
-    f"mysql+pymysql://{SOURCE_USER}:{SOURCE_PASSWORD}@{SOURCE_HOST}:3306/{SOURCE_DATABASE}"
-)
-
-dest_engine = create_engine(
-    f"mysql+pymysql://{DEST_USER}:{DEST_PASSWORD}@{DEST_HOST}:3306/{DEST_DATABASE}"
-)
-
-# ============================================================
-# LAMBDA HANDLER
-# ============================================================
+from sql_guard import validate_sql
 
 def lambda_handler(event, context):
 
     try:
 
-        # ====================================================
-        # STEP 1 -> FETCH NEW DATA
-        # ====================================================
+        body = event
 
-        new_data_found = fetch_and_copy_data(
-            source_engine,
-            dest_engine
+        if "body" in event:
+
+            body = json.loads(event["body"])
+
+        question = body["question"]
+
+        sql = generate_sql(question)
+
+        validate_sql(sql)
+
+
+        df = execute_query(sql)
+
+        result = route(
+            question,
+            df,
+            get_client(),
+            AZURE_OPENAI_DEPLOYMENT
         )
 
-        # ====================================================
-        # STEP 2 -> NO NEW DATA
-        # ====================================================
-
-        if not new_data_found:
-
-            return {
-                "statusCode": 200,
-                "message": "No New Data"
-            }
-
-        # ====================================================
-        # STEP 3 -> IDLE TROLLEYS
-        # ====================================================
-
-        process_idle_trolleys(
-            dest_engine
-        )
-
-        # ====================================================
-        # STEP 4 -> UNDERPERFORMING GEOZONES
-        # ====================================================
-
-        process_underperforming_geozones(
-            dest_engine
-        )
-
-        # ====================================================
-        # RESPONSE
-        # ====================================================
+        result["sql_query"] = sql
 
         return {
             "statusCode": 200,
-            "message": "Success"
+            "body": json.dumps(
+                result,
+                default=str
+            )
         }
 
     except Exception as e:
 
         return {
             "statusCode": 500,
-            "error": str(e)
+            "body": json.dumps({
+                "response_type": "error",
+                "message": str(e)
+            })
         }

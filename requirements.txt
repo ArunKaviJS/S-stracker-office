@@ -1,4 +1,5 @@
+openai
 pandas
-numpy
 sqlalchemy
 pymysql
+#cryptography
