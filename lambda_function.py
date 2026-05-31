@@ -1,101 +1,78 @@
-import os
+import json
+import pandas as pd
 
-from sqlalchemy import create_engine
-
-from fetch_data_and_copy import fetch_and_copy_data
-
-from Idle_Trolleys_Logic import process_idle_trolleys
-
-from Geozone_Performance_Logic import (
-    process_underperforming_geozones
+from services.s3_service import (
+    download_latest_model
 )
 
-# ============================================================
-# SOURCE DB
-# ============================================================
-
-SOURCE_HOST = os.getenv("SOURCE_DB_HOST")
-SOURCE_USER = os.getenv("SOURCE_DB_USER")
-SOURCE_PASSWORD = os.getenv("SOURCE_DB_PASSWORD")
-SOURCE_DATABASE = os.getenv("SOURCE_DB_NAME")
-
-# ============================================================
-# DESTINATION DB
-# ============================================================
-
-DEST_HOST = os.getenv("DEST_DB_HOST")
-DEST_USER = os.getenv("DEST_DB_USER")
-DEST_PASSWORD = os.getenv("DEST_DB_PASSWORD")
-DEST_DATABASE = os.getenv("DEST_DB_NAME")
-
-# ============================================================
-# SQLALCHEMY CONNECTIONS
-# ============================================================
-
-source_engine = create_engine(
-    f"mysql+pymysql://{SOURCE_USER}:{SOURCE_PASSWORD}@{SOURCE_HOST}:3306/{SOURCE_DATABASE}"
+from services.model_service import (
+    load_model
 )
 
-dest_engine = create_engine(
-    f"mysql+pymysql://{DEST_USER}:{DEST_PASSWORD}@{DEST_HOST}:3306/{DEST_DATABASE}"
+from services.db_service import (
+    get_latest_maintenance_data,
+    insert_predictions
 )
 
-# ============================================================
-# LAMBDA HANDLER
-# ============================================================
+from services.prediction_service import (
+    predict_range
+)
+
+from utils.logger import log
+
 
 def lambda_handler(event, context):
 
     try:
 
-        # ====================================================
-        # STEP 1 -> FETCH NEW DATA
-        # ====================================================
+        log("Lambda Started")
 
-        new_data_found = fetch_and_copy_data(
-            source_engine,
-            dest_engine
+        start_date = pd.to_datetime(
+            event["start_date"]
         )
 
-        # ====================================================
-        # STEP 2 -> NO NEW DATA
-        # ====================================================
-
-        if not new_data_found:
-
-            return {
-                "statusCode": 200,
-                "message": "No New Data"
-            }
-
-        # ====================================================
-        # STEP 3 -> IDLE TROLLEYS
-        # ====================================================
-
-        process_idle_trolleys(
-            dest_engine
+        end_date = pd.to_datetime(
+            event["end_date"]
         )
 
-        # ====================================================
-        # STEP 4 -> UNDERPERFORMING GEOZONES
-        # ====================================================
+        download_latest_model()
 
-        process_underperforming_geozones(
-            dest_engine
+        (
+            model,
+            type_encoder,
+            reason_encoder
+        ) = load_model()
+
+        latest_df = (
+            get_latest_maintenance_data()
         )
 
-        # ====================================================
-        # RESPONSE
-        # ====================================================
+        result_df = predict_range(
+            latest_df,
+            start_date,
+            end_date,
+            model,
+            type_encoder,
+            reason_encoder
+        )
+
+        insert_predictions(result_df)
 
         return {
             "statusCode": 200,
-            "message": "Success"
+            "body": json.dumps({
+                "message":
+                    "Prediction completed",
+                "rows_inserted":
+                    len(result_df)
+            })
         }
 
     except Exception as e:
 
         return {
             "statusCode": 500,
-            "error": str(e)
+            "body": json.dumps({
+                "error": str(e)
+            })
         }
