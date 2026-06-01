@@ -29,4 +29,4 @@ pipelines:
           - aws s3 cp code.zip s3://ai-stracker-chatbucket-bibucket/code.zip
 
           # Deploy to Lambda
-          - aws lambda update-function-code --function-name AI-straker-chatbot --s3-bucket ai-stracker-chatbucket-bibucket --s3-key code.zip --region ap-south-1
+          - aws lambda update-function-code --function-name AI-straker-chatbot --s3-bucket ai-stracker-chatbucket-bibucket --s3-key code.zip --region ap-southeast-1
