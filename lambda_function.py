@@ -1,101 +1,92 @@
-import os
+import json
+import joblib
+import boto3
 
-from sqlalchemy import create_engine
+from predictor import generate_prediction_dataframe
+from db import get_geozones, save_forecasts
 
-from fetch_data_and_copy import fetch_and_copy_data
 
-from Idle_Trolleys_Logic import process_idle_trolleys
+MODEL_PATH = "/tmp/model.pkl"
 
-from Geozone_Performance_Logic import (
-    process_underperforming_geozones
-)
+s3 = boto3.client("s3")
 
-# ============================================================
-# SOURCE DB
-# ============================================================
 
-SOURCE_HOST = os.getenv("SOURCE_DB_HOST")
-SOURCE_USER = os.getenv("SOURCE_DB_USER")
-SOURCE_PASSWORD = os.getenv("SOURCE_DB_PASSWORD")
-SOURCE_DATABASE = os.getenv("SOURCE_DB_NAME")
+def load_model():
 
-# ============================================================
-# DESTINATION DB
-# ============================================================
+    s3.download_file(
+        "demand-forecast-model-bucket",
+        "xgb_trolley_model.pkl",
+        MODEL_PATH
+    )
 
-DEST_HOST = os.getenv("DEST_DB_HOST")
-DEST_USER = os.getenv("DEST_DB_USER")
-DEST_PASSWORD = os.getenv("DEST_DB_PASSWORD")
-DEST_DATABASE = os.getenv("DEST_DB_NAME")
+    return joblib.load(MODEL_PATH)
 
-# ============================================================
-# SQLALCHEMY CONNECTIONS
-# ============================================================
-
-source_engine = create_engine(
-    f"mysql+pymysql://{SOURCE_USER}:{SOURCE_PASSWORD}@{SOURCE_HOST}:3306/{SOURCE_DATABASE}"
-)
-
-dest_engine = create_engine(
-    f"mysql+pymysql://{DEST_USER}:{DEST_PASSWORD}@{DEST_HOST}:3306/{DEST_DATABASE}"
-)
-
-# ============================================================
-# LAMBDA HANDLER
-# ============================================================
 
 def lambda_handler(event, context):
 
-    try:
+    start_date = event["start_date"]
 
-        # ====================================================
-        # STEP 1 -> FETCH NEW DATA
-        # ====================================================
+    end_date = event.get(
+        "end_date",
+        start_date
+    )
 
-        new_data_found = fetch_and_copy_data(
-            source_engine,
-            dest_engine
-        )
+    model = load_model()
 
-        # ====================================================
-        # STEP 2 -> NO NEW DATA
-        # ====================================================
+    geozones = get_geozones()
 
-        if not new_data_found:
+    pred_df = generate_prediction_dataframe(
+        start_date,
+        end_date,
+        geozones
+    )
 
-            return {
-                "statusCode": 200,
-                "message": "No New Data"
-            }
+    feature_cols = [
+        "day_num",
+        "is_weekend",
+        "hour",
+        "geozoneId",
+        "geolayerId",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "month_sin",
+        "month_cos",
+        "day_sin",
+        "day_cos"
+    ]
 
-        # ====================================================
-        # STEP 3 -> IDLE TROLLEYS
-        # ====================================================
+    pred_df["predicted_trolley_count"] = (
+        model.predict(pred_df[feature_cols])
+        .clip(0)
+        .round()
+        .astype(int)
+    )
 
-        process_idle_trolleys(
-            dest_engine
-        )
+    save_df = pred_df[
+        [
+            "forecast_date",
+            "hour",
+            "geozoneId",
+            "geolayerId",
+            "predicted_trolley_count"
+        ]
+    ].copy()
 
-        # ====================================================
-        # STEP 4 -> UNDERPERFORMING GEOZONES
-        # ====================================================
+    save_df.rename(
+        columns={
+            "hour": "forecast_hour"
+        },
+        inplace=True
+    )
 
-        process_underperforming_geozones(
-            dest_engine
-        )
+    save_forecasts(save_df)
 
-        # ====================================================
-        # RESPONSE
-        # ====================================================
-
-        return {
-            "statusCode": 200,
-            "message": "Success"
-        }
-
-    except Exception as e:
-
-        return {
-            "statusCode": 500,
-            "error": str(e)
-        }
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "rows_created": len(save_df),
+            "start_date": start_date,
+            "end_date": end_date
+        })
+    }
