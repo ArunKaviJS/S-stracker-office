@@ -1,4 +1,6 @@
-pandas
-numpy
+fastapi
+mangum
 sqlalchemy
 pymysql
+pandas
+numpy

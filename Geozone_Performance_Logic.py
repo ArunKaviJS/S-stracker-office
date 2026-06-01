@@ -8,7 +8,7 @@ from sqlalchemy import text
 # ============================================================
 
 def process_underperforming_geozones(
-    dest_engine
+    engine
 ):
 
     # ========================================================
@@ -16,9 +16,15 @@ def process_underperforming_geozones(
     # ========================================================
 
     df2 = pd.read_sql(
-        "SELECT * FROM tbl_device_history_copy",
-        dest_engine
-    )
+    """
+    SELECT
+        trolleyId,
+        geozoneId,
+        createdOn
+    FROM tbl_device_history
+    """,
+    engine
+)
 
     # ========================================================
     # SORT
@@ -124,14 +130,14 @@ def process_underperforming_geozones(
     )
     """
 
-    with dest_engine.begin() as conn:
+    with engine.begin() as conn:
         conn.execute(text(create_table_query))
 
     # ========================================================
     # CLEAR OLD DATA
     # ========================================================
 
-    with dest_engine.begin() as conn:
+    with engine.begin() as conn:
         conn.execute(
             text(
                 "TRUNCATE TABLE tbl_underperforming_geozones"
@@ -144,7 +150,7 @@ def process_underperforming_geozones(
 
     zone_daily.to_sql(
         "tbl_underperforming_geozones",
-        dest_engine,
+        engine,
         if_exists="append",
         index=False
     )

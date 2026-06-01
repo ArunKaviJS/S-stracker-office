@@ -10,92 +10,71 @@ from Geozone_Performance_Logic import (
     process_underperforming_geozones
 )
 
+from fastapi import FastAPI
+from mangum import Mangum
+
+
+
+app = FastAPI()
+
+
 # ============================================================
 # SOURCE DB
 # ============================================================
 
-SOURCE_HOST = os.getenv("SOURCE_DB_HOST")
-SOURCE_USER = os.getenv("SOURCE_DB_USER")
-SOURCE_PASSWORD = os.getenv("SOURCE_DB_PASSWORD")
-SOURCE_DATABASE = os.getenv("SOURCE_DB_NAME")
-
-# ============================================================
-# DESTINATION DB
-# ============================================================
-
-DEST_HOST = os.getenv("DEST_DB_HOST")
-DEST_USER = os.getenv("DEST_DB_USER")
-DEST_PASSWORD = os.getenv("DEST_DB_PASSWORD")
-DEST_DATABASE = os.getenv("DEST_DB_NAME")
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_DATABASE = os.getenv("DB_NAME")
 
 # ============================================================
 # SQLALCHEMY CONNECTIONS
 # ============================================================
 
-source_engine = create_engine(
-    f"mysql+pymysql://{SOURCE_USER}:{SOURCE_PASSWORD}@{SOURCE_HOST}:3306/{SOURCE_DATABASE}"
-)
-
-dest_engine = create_engine(
-    f"mysql+pymysql://{DEST_USER}:{DEST_PASSWORD}@{DEST_HOST}:3306/{DEST_DATABASE}"
+engine = create_engine(
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:3306/{DB_DATABASE}"
 )
 
 # ============================================================
 # LAMBDA HANDLER
 # ============================================================
 
-def lambda_handler(event, context):
+@app.get("/Stracter_ai_dev")
+def Stracter_ai_dev():
 
     try:
 
-        # ====================================================
-        # STEP 1 -> FETCH NEW DATA
-        # ====================================================
+        # ============================================
+        # PROCESS IDLE TROLLEYS
+        # ============================================
 
-        new_data_found = fetch_and_copy_data(
-            source_engine,
-            dest_engine
-        )
+        process_idle_trolleys(engine)
 
-        # ====================================================
-        # STEP 2 -> NO NEW DATA
-        # ====================================================
+        # ============================================
+        # PROCESS UNDERPERFORMING GEOZONES
+        # ============================================
 
-        if not new_data_found:
+        process_underperforming_geozones(engine)
 
-            return {
-                "statusCode": 200,
-                "message": "No New Data"
-            }
-
-        # ====================================================
-        # STEP 3 -> IDLE TROLLEYS
-        # ====================================================
-
-        process_idle_trolleys(
-            dest_engine
-        )
-
-        # ====================================================
-        # STEP 4 -> UNDERPERFORMING GEOZONES
-        # ====================================================
-
-        process_underperforming_geozones(
-            dest_engine
-        )
-
-        # ====================================================
-        # RESPONSE
-        # ====================================================
+        # ============================================
+        # SUCCESS RESPONSE
+        # ============================================
 
         return {
-            "statusCode": 200,
-            "message": "Success"
+            "status": "success",
+            "message": "Processing completed successfully"
         }
 
     except Exception as e:
 
         return {
-            "statusCode": 500,
+            "status": "failed",
             "error": str(e)
         }
+        
+        
+# ============================================================
+# AWS LAMBDA HANDLER
+# ============================================================
+
+lambda_handler = Mangum(app)

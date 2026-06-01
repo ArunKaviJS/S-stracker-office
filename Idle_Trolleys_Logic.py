@@ -7,18 +7,23 @@ from sqlalchemy import text
 # IDLE TROLLEYS LOGIC
 # ============================================================
 
-def process_idle_trolleys(
-    dest_engine
-):
+def process_idle_trolleys(engine):
 
     # ========================================================
     # LOAD DATA
     # ========================================================
 
     df = pd.read_sql(
-        "SELECT * FROM tbl_device_history_copy",
-        dest_engine
-    )
+    """
+    SELECT
+        trolleyId,
+        geozoneId,
+        createdOn,
+        status
+    FROM tbl_device_history
+    """,
+    engine
+)
 
     # ========================================================
     # REQUIRED COLUMNS
@@ -200,14 +205,14 @@ def process_idle_trolleys(
     )
     """
 
-    with dest_engine.begin() as conn:
+    with engine.begin() as conn:
         conn.execute(text(create_table_query))
 
     # ========================================================
     # CLEAR OLD DATA
     # ========================================================
 
-    with dest_engine.begin() as conn:
+    with engine.begin() as conn:
         conn.execute(
             text("TRUNCATE TABLE tbl_idle_trolleys")
         )
@@ -218,7 +223,7 @@ def process_idle_trolleys(
 
     idle_trolleys.to_sql(
         "tbl_idle_trolleys",
-        dest_engine,
+        engine,
         if_exists="append",
         index=False
     )
