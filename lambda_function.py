@@ -2,7 +2,7 @@ import os
 
 from sqlalchemy import create_engine
 
-from fetch_data_and_copy import fetch_and_copy_data
+from fetch_data import fetch_and_copy_data
 
 from Idle_Trolleys_Logic import process_idle_trolleys
 
