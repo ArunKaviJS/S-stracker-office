@@ -13,6 +13,13 @@ from config import AZURE_OPENAI_DEPLOYMENT
 
 from sql_guard import validate_sql
 
+
+from response_store import (
+    create_response_table,
+    truncate_response_table,
+    save_response
+)
+
 def lambda_handler(event, context):
 
     try:
@@ -40,6 +47,16 @@ def lambda_handler(event, context):
         )
 
         result["sql_query"] = sql
+        
+        create_response_table()
+
+        truncate_response_table()
+
+        save_response(
+            question,
+            sql,
+            result
+        )
 
         return {
             "statusCode": 200,
