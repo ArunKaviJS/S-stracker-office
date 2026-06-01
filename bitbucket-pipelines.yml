@@ -26,7 +26,7 @@ pipelines:
           - zip -r code.zip . -x "*.git*" "__pycache__/*" "*.pyc"
 
           # Upload to S3
-          - aws s3 cp code.zip s3://s-tracker-kpi-insights/code.zip
+          - aws s3 cp code.zip s3://ai-stracker-kpi/code.zip
 
           # Deploy to Lambda
-          - aws lambda update-function-code --function-name KPI-Insights --s3-bucket s-tracker-kpi-insights --s3-key code.zip --region ap-southeast-1
+          - aws lambda update-function-code --function-name KPI-Insights --s3-bucket ai-stracker-kpi --s3-key code.zip --region ap-southeast-1
