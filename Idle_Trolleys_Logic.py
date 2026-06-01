@@ -229,3 +229,4 @@ def process_idle_trolleys(engine):
     )
 
     print("Idle Trolleys Stored")
+    print(idle_trolleys.head())

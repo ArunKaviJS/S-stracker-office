@@ -157,3 +157,4 @@ def process_underperforming_geozones(
     )
 
     print("Underperforming Geozones Stored")
+    print(zone_daily.head())

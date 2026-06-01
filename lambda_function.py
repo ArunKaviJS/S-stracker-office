@@ -1,22 +1,8 @@
 import os
-
+import json
 from sqlalchemy import create_engine
-
-from fetch_data import fetch_and_copy_data
-
 from Idle_Trolleys_Logic import process_idle_trolleys
-
-from Geozone_Performance_Logic import (
-    process_underperforming_geozones
-)
-
-from fastapi import FastAPI
-from mangum import Mangum
-
-
-
-app = FastAPI()
-
+from Geozone_Performance_Logic import process_underperforming_geozones
 
 # ============================================================
 # SOURCE DB
@@ -39,9 +25,7 @@ engine = create_engine(
 # LAMBDA HANDLER
 # ============================================================
 
-@app.get("/Stracter_ai_dev")
-def Stracter_ai_dev():
-
+def lambda_handler(event, context):
     try:
 
         # ============================================
@@ -61,20 +45,18 @@ def Stracter_ai_dev():
         # ============================================
 
         return {
-            "status": "success",
-            "message": "Processing completed successfully"
+            "statusCode": 200,
+            "body": json.dumps({
+                "status": "success",
+                "message": "Processing completed successfully"
+            })
         }
 
     except Exception as e:
-
         return {
-            "status": "failed",
-            "error": str(e)
+            "statusCode": 500,
+            "body": json.dumps({
+                "status": "failed",
+                "error": str(e)
+            })
         }
-        
-        
-# ============================================================
-# AWS LAMBDA HANDLER
-# ============================================================
-
-lambda_handler = Mangum(app)
