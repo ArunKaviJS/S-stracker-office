@@ -23,6 +23,7 @@ def fetch_and_copy_data(
     )
     """
 
+    
     with dest_engine.begin() as conn:
         conn.execute(text(create_tracker_query))
 
