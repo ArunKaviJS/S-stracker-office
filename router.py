@@ -147,9 +147,6 @@ def route(question, df, client, deployment):
 
         "columns":
         list(df.columns),
-
-        "data":
-        df.to_dict("records"),
         
         "csv_url":
         csv_url
