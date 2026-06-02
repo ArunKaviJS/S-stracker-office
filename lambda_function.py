@@ -1,7 +1,7 @@
 import json
 import joblib
 import boto3
-
+import pandas as pd
 from predictor import generate_prediction_dataframe
 from db import get_geozones, save_forecasts, truncate_forecast_table
 
@@ -26,10 +26,21 @@ def lambda_handler(event, context):
 
     start_date = event["start_date"]
 
-    end_date = event.get(
-        "end_date",
-        start_date
-    )
+    if "days" in event:
+
+        days = int(event["days"])
+
+        end_date = (
+            pd.to_datetime(start_date)
+            + pd.Timedelta(days=days - 1)
+        ).strftime("%Y-%m-%d")
+
+    else:
+
+        end_date = event.get(
+            "end_date",
+            start_date
+        )
 
     model = load_model()
 
