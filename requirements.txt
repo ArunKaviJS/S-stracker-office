@@ -3,4 +3,4 @@ numpy
 sqlalchemy
 pymysql
 joblib
-xgboost
+scikit-learn
