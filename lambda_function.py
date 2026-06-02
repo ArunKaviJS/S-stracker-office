@@ -3,7 +3,7 @@ import joblib
 import boto3
 
 from predictor import generate_prediction_dataframe
-from db import get_geozones, save_forecasts
+from db import get_geozones, save_forecasts, truncate_forecast_table
 
 
 MODEL_PATH = "/tmp/model.pkl"
@@ -68,7 +68,6 @@ def lambda_handler(event, context):
             "forecast_date",
             "hour",
             "geozoneId",
-            "geolayerId",
             "predicted_trolley_count"
         ]
     ].copy()
@@ -80,6 +79,10 @@ def lambda_handler(event, context):
         inplace=True
     )
 
+    # Delete old forecasts
+    truncate_forecast_table()
+
+    # Store fresh forecasts
     save_forecasts(save_df)
 
     return {

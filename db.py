@@ -1,5 +1,5 @@
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import os
 
 
@@ -23,11 +23,15 @@ def get_geozones():
 
     return pd.read_sql(query, engine)
 
+def truncate_forecast_table():
+
+    with engine.begin() as conn:
+        conn.execute(text("TRUNCATE TABLE tbl_trolley_forecast"))
 
 def save_forecasts(df):
 
     df.to_sql(
-        "tbl_trolley_demand_forecast",
+        "tbl_trolley_forecast",
         engine,
         if_exists="append",
         index=False
