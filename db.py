@@ -27,7 +27,7 @@ def get_geozones():
 def save_forecasts(df):
 
     df.to_sql(
-        "tbl_trolley_forecast",
+        "tbl_trolley_demand_forecast",
         engine,
         if_exists="append",
         index=False
