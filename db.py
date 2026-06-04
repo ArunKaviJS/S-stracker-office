@@ -10,7 +10,7 @@ def get_engine():
         f"{os.environ['DB_USER']}:"
         f"{os.environ['DB_PASSWORD']}@"
         f"{os.environ['DB_HOST']}:3306/"
-        f"{os.environ['DB_DATABASE']}"
+        f"{os.environ['DB_NAME']}"
     )
 
     return create_engine(conn)
