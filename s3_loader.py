@@ -24,7 +24,7 @@ def load_pickle(key):
 def load_model():
 
     return load_pickle(
-        "randomforestreg_for_predictive_maintainance.pkl"
+        "model.pkl"
     )
 
 
