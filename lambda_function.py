@@ -44,11 +44,22 @@ def lambda_handler(event, context):
     model = load_model()
 
     geozones = get_geozones()
+    
+    print(len(geozones))
+    print(geozones["geozoneId"].nunique())
 
     pred_df = generate_prediction_dataframe(
         start_date,
         end_date,
         geozones
+    )
+    
+    print("Rows:", len(pred_df))
+
+    print(
+        pred_df.groupby(
+            ["forecast_date", "hour", "geozoneId"]
+        ).size().max()
     )
 
     feature_cols = [
