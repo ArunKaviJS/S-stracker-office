@@ -116,6 +116,9 @@ def lambda_handler(event, context):
 
         # ---------------------------------------------------
         # Final Output Columns
+        #MySQL automatically inserts:AccuracyPercentage = 72.23
+           # Status = 1
+            #CreatedAt = CURRENT_TIMESTAMP
         # ---------------------------------------------------
 
         output_df = filtered_df[
@@ -126,8 +129,7 @@ def lambda_handler(event, context):
                 "type",
                 "reason",
                 "createdOn",
-                "nextmaintenancedate",
-                "AccuracyPercentage"
+                "nextmaintenancedate"
             ]
         ].copy()
 
