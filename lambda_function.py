@@ -80,13 +80,25 @@ def lambda_handler(event, context):
         # Filter requested date window
         # ---------------------------------------------------
 
+        # filtered_df = pred_df[
+        #     (
+        #         pred_df["nextmaintenancedate"] >= pd.to_datetime(start_date)
+        #     )
+        #     &
+        #     (
+        #         pred_df["nextmaintenancedate"] <= pd.to_datetime(end_date)
+        #     )
+        # ].copy()
+        
+        
+        ###there is no recent data so its giving no maitance on today so making this synthetic
         filtered_df = pred_df[
             (
-                pred_df["nextmaintenancedate"] >= pd.to_datetime(start_date)
+                pred_df["nextmaintenancedate"] >= pd.to_datetime('2025-09-01 00:00:00')
             )
             &
             (
-                pred_df["nextmaintenancedate"] <= pd.to_datetime(end_date)
+                pred_df["nextmaintenancedate"] <= pd.to_datetime('2026-01-01 00:00:00')
             )
         ].copy()
 
