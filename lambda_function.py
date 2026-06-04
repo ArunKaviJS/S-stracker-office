@@ -77,13 +77,14 @@ def lambda_handler(event, context):
     
 
     # Combine forecast_date + hour into ISO timestamp
+    # Forecast timestamp
     pred_df["timestamp"] = (
         pd.to_datetime(pred_df["forecast_date"])
         + pd.to_timedelta(pred_df["hour"], unit="h")
-    ).dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
 
     # Current UTC timestamp
-    pred_df["createdOn"] = pd.Timestamp.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    pred_df["createdOn"] = pd.Timestamp.utcnow()
     
 
     save_df = pred_df[
@@ -105,6 +106,9 @@ def lambda_handler(event, context):
         inplace=True
     )
 
+    save_df["timestamp"] = pd.to_datetime(save_df["timestamp"])
+    save_df["createdOn"] = pd.to_datetime(save_df["createdOn"])
+    
     # Delete old forecasts
     truncate_forecast_table()
 
