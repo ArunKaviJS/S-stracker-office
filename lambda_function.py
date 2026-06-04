@@ -34,20 +34,35 @@ def lambda_handler(event, context):
 
     latest_date = get_latest_forecast_date()
 
-    start_date = (
-        pd.to_datetime(latest_date)
-        + pd.Timedelta(days=1)
-    ).strftime("%Y-%m-%d")
+    today = pd.Timestamp.now().normalize()
 
-    end_date = start_date
+    # Forecast table empty
+    if latest_date is None or pd.isna(latest_date):
+
+        start_date = today
+        end_date = today + pd.Timedelta(days=9)
+
+    # Forecast table has data
+    else:
+
+        start_date = (
+            pd.to_datetime(latest_date)
+            + pd.Timedelta(days=1)
+        )
+
+        end_date = start_date
+
+    start_date = start_date.strftime("%Y-%m-%d")
+    end_date = end_date.strftime("%Y-%m-%d")
 
     model = load_model()
 
     geozones = get_geozones()
     
-    print(len(geozones))
-    print(geozones["geozoneId"].nunique())
-
+    print("Geozone rows:", len(geozones))
+    print("Unique geozones:", geozones["geozoneId"].nunique())
+    print(sorted(geozones["geozoneId"].unique()))
+    
     pred_df = generate_prediction_dataframe(
         start_date,
         end_date,
