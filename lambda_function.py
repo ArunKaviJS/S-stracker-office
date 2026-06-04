@@ -11,10 +11,7 @@ from db import (
 )
 
 
-mode = event.get(
-    "mode",
-    "rebuild"
-)
+
 MODEL_PATH = "/tmp/model.pkl"
 
 s3 = boto3.client("s3")
@@ -111,12 +108,14 @@ def lambda_handler(event, context):
     save_df["timestamp"] = pd.to_datetime(save_df["timestamp"])
     save_df["createdOn"] = pd.to_datetime(save_df["createdOn"])
     
-    # Delete old forecasts
-    truncate_forecast_table()
+    
 
     # Store fresh forecasts
     save_forecasts(save_df)
 
+    delete_expired_forecasts()
+    
+    #delete expired date from db
     return {
         "statusCode": 200,
         "body": json.dumps({
