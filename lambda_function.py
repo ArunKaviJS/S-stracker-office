@@ -3,9 +3,18 @@ import joblib
 import boto3
 import pandas as pd
 from predictor import generate_prediction_dataframe
-from db import get_geozones, save_forecasts, truncate_forecast_table
+from db import (
+    get_geozones,
+    save_forecasts,
+    get_latest_forecast_date,
+    delete_expired_forecasts
+)
 
 
+mode = event.get(
+    "mode",
+    "rebuild"
+)
 MODEL_PATH = "/tmp/model.pkl"
 
 s3 = boto3.client("s3")
@@ -23,24 +32,17 @@ def load_model():
 
 
 def lambda_handler(event, context):
+    
+   
 
-    start_date = event["start_date"]
+    latest_date = get_latest_forecast_date()
 
-    if "days" in event:
+    start_date = (
+        pd.to_datetime(latest_date)
+        + pd.Timedelta(days=1)
+    ).strftime("%Y-%m-%d")
 
-        days = int(event["days"])
-
-        end_date = (
-            pd.to_datetime(start_date)
-            + pd.Timedelta(days=days - 1)
-        ).strftime("%Y-%m-%d")
-
-    else:
-
-        end_date = event.get(
-            "end_date",
-            start_date
-        )
+    end_date = start_date
 
     model = load_model()
 

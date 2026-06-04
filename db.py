@@ -39,3 +39,27 @@ def save_forecasts(df):
         if_exists="append",
         index=False
     )
+    
+    
+def get_latest_forecast_date():
+
+    query = """
+    SELECT MAX(forecast_date) AS max_date
+    FROM tbl_trolley_forecast
+    """
+
+    result = pd.read_sql(query, engine)
+
+    return result.iloc[0]["max_date"]
+
+
+def delete_expired_forecasts():
+
+    query = """
+    DELETE
+    FROM tbl_trolley_forecast
+    WHERE forecast_date < CURDATE()
+    """
+
+    with engine.begin() as conn:
+        conn.execute(text(query))
