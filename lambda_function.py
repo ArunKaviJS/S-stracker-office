@@ -73,13 +73,28 @@ def lambda_handler(event, context):
         .round()
         .astype(int)
     )
+    
+    
+
+    # Combine forecast_date + hour into ISO timestamp
+    pred_df["timestamp"] = (
+        pd.to_datetime(pred_df["forecast_date"])
+        + pd.to_timedelta(pred_df["hour"], unit="h")
+    ).dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Current UTC timestamp
+    pred_df["createdOn"] = pd.Timestamp.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    
 
     save_df = pred_df[
         [
             "forecast_date",
             "hour",
+            "timestamp",
             "geozoneId",
-            "predicted_trolley_count"
+            "geozoneName",
+            "predicted_trolley_count",
+            "createdOn"
         ]
     ].copy()
 

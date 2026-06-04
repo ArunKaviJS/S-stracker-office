@@ -31,6 +31,9 @@ def generate_prediction_dataframe(
                     "geozoneId": gz["geozoneId"],
 
                     "geolayerId": gz["geolayerId"],
+                    
+                    # NEW
+                    "geozoneName": gz["geozoneName"],
 
                     "month": current.month,
 

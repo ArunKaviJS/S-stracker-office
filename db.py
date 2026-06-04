@@ -16,6 +16,7 @@ def get_geozones():
     query = """
     SELECT DISTINCT
         geozoneId,
+        geozoneName,
         geolayerId
     FROM tbl_device_history
     WHERE geozoneId <> 0
