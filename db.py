@@ -46,7 +46,7 @@ def save_predictions(df):
 def get_latest_forecast_date():
 
     query = """
-    SELECT MAX(nextmaintenancedate) AS latest_date
+    SELECT MAX(NextMaintanence) AS latest_date
     FROM tbl_predictive_maintainanence
     """
 
