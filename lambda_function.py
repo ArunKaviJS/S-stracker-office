@@ -74,7 +74,7 @@ def lambda_handler(event, context):
             reason_encoder=REASON_ENCODER
         )
 
-        print(f"Predictions Generated : {len(pred_df)}")
+        print(f"Predictions Generated : {(pred_df.head())}")
 
         # ---------------------------------------------------
         # Filter requested date window
@@ -82,11 +82,11 @@ def lambda_handler(event, context):
 
         filtered_df = pred_df[
             (
-                pred_df["nextmaintenancedate"] >= pd.to_datetime(start_date)
+                pred_df["nextmaintenance"] >= pd.to_datetime(start_date)
             )
             &
             (
-                pred_df["nextmaintenancedate"] <= pd.to_datetime(end_date)
+                pred_df["nextmaintenance"] <= pd.to_datetime(end_date)
             )
         ].copy()
 
