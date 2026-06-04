@@ -82,11 +82,11 @@ def lambda_handler(event, context):
 
         filtered_df = pred_df[
             (
-                pred_df["nextmaintenance"] >= pd.to_datetime(start_date)
+                pred_df["nextmaintenancedate"] >= pd.to_datetime(start_date)
             )
             &
             (
-                pred_df["nextmaintenance"] <= pd.to_datetime(end_date)
+                pred_df["nextmaintenancedate"] <= pd.to_datetime(end_date)
             )
         ].copy()
 
