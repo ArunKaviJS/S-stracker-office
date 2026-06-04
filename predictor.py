@@ -23,16 +23,14 @@ def generate_prediction_dataframe(
                     "forecast_date": current.date(),
 
                     "day_num": current.dayofweek,
-
                     "is_weekend": int(current.dayofweek >= 5),
 
                     "hour": hr,
 
                     "geozoneId": gz["geozoneId"],
-
                     "geolayerId": gz["geolayerId"],
-                    
-                    # NEW
+
+                    # Metadata only
                     "geozoneName": gz["geozoneName"],
 
                     "month": current.month,
@@ -45,7 +43,6 @@ def generate_prediction_dataframe(
 
                     "day_sin": np.sin(2*np.pi*current.dayofweek/7),
                     "day_cos": np.cos(2*np.pi*current.dayofweek/7)
-
                 })
 
         current += pd.Timedelta(days=1)
