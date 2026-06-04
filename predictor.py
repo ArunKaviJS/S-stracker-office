@@ -28,7 +28,6 @@ def generate_prediction_dataframe(
                     "hour": hr,
 
                     "geozoneId": gz["geozoneId"],
-                    "geolayerId": gz["geolayerId"],
 
                     # Metadata only
                     "geozoneName": gz["geozoneName"],

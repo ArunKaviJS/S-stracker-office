@@ -13,7 +13,6 @@ def build_features(date, geozoneId, geolayerId):
         "is_weekend": int(day_num >= 5),
         "hour": None,
         "geozoneId": geozoneId,
-        "geolayerId": geolayerId,
         "month": dt.month,
 
         "hour_sin": None,

@@ -21,7 +21,7 @@ def load_model():
 
     s3.download_file(
         "demand-forecast-model-bucket",
-        "Stracker_randomforest_model_demand_forest.pkl",
+        "rf_trolley_model.pkl",
         MODEL_PATH
     )
 
@@ -56,7 +56,6 @@ def lambda_handler(event, context):
         "is_weekend",
         "hour",
         "geozoneId",
-        "geolayerId",
         "month",
         "hour_sin",
         "hour_cos",

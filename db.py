@@ -16,7 +16,6 @@ def get_geozones():
     query = """
     SELECT DISTINCT
         dh.geozoneId,
-        dh.geolayerId,
         gz.geozoneName
     FROM tbl_device_history dh
     INNER JOIN tbl_geozones gz
