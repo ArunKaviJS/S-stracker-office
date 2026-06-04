@@ -15,11 +15,13 @@ def get_geozones():
 
     query = """
     SELECT DISTINCT
-        geozoneId,
-        geozoneName,
-        geolayerId
-    FROM tbl_device_history
-    WHERE geozoneId <> 0
+        dh.geozoneId,
+        dh.geolayerId,
+        gz.geozoneName
+    FROM tbl_device_history dh
+    INNER JOIN tbl_geozones gz
+        ON dh.geozoneId = gz.geozoneId
+    WHERE dh.geozoneId <> 0
     """
 
     return pd.read_sql(query, engine)
