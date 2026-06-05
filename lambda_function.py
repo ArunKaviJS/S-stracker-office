@@ -5,7 +5,6 @@ from db import (
     load_latest_maintenance,
     save_predictions,
     get_prediction_window,
-    save_processed_date
 )
 
 from predictor import (
@@ -95,14 +94,9 @@ def lambda_handler(event, context):
 
         if filtered_df.empty:
 
-            save_processed_date(
-                start_date,
-                0
-            )
-
             return {
                 "statusCode": 200,
-                "message": "No predictions found",
+                "message": "No predictions found for date window",
                 "start_date": str(start_date.date()),
                 "end_date": str(end_date.date()),
                 "rows_inserted": 0
@@ -156,11 +150,6 @@ def lambda_handler(event, context):
         # ---------------------------------------------------
 
         save_predictions(output_df)
-        
-        save_processed_date(
-            start_date,
-            len(output_df)
-        )
 
         print(f"Inserted Rows : {len(output_df)}")
 

@@ -46,8 +46,8 @@ def save_predictions(df):
 def get_latest_forecast_date():
 
     query = """
-    SELECT MAX(processed_date) AS latest_date
-    FROM tbl_predictive_maintainance_tracker
+    SELECT MAX(NextMaintanence) AS latest_date
+    FROM tbl_predictive_maintainanence
     """
 
     df = pd.read_sql(query, get_engine())
@@ -77,27 +77,3 @@ def get_prediction_window():
         end_date = start_date
 
     return start_date.normalize(), end_date.normalize()
-
-
-def save_processed_date(
-    processed_date,
-    rows_inserted
-):
-
-    query = f"""
-    INSERT INTO tbl_predictive_maintainance_tracker
-    (
-        processed_date,
-        rows_inserted
-    )
-    VALUES
-    (
-        '{processed_date.strftime("%Y-%m-%d")}',
-        {rows_inserted}
-    )
-    """
-
-    engine = get_engine()
-
-    with engine.begin() as conn:
-        conn.exec_driver_sql(query)
