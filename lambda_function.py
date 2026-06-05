@@ -177,63 +177,35 @@ def lambda_handler(event, context):
     # Based on the order shown in the image
     # --------------------------------------------------
 
-    new_names = [
-        "MTB LEVEL 2",
-        "STCP BLOCK A LEVEL 5",
-        "STCP BLOCK B LEVEL 5",
-        "STCP BLOCK A LEVEL 4",
-        "STCP BLOCK B LEVEL 4",
-        "STCP BLOCK A LEVEL 3",
-        "STCP BLOCK B LEVEL 3",
-        "STCP BLOCK A LEVEL 2",
-        "STCP BLOCK B LEVEL 2",
-        "STCP BLOCK A LEVEL 1",
-        "STCP BLOCK B LEVEL 1",
-        "STCP BLOCK A LEVEL G",
-        "STCP BLOCK B LEVEL G",
-        "STCP BLOCK A LEVEL B",
-        "STCP BLOCK B LEVEL B",
-        "MTB LEVEL 3",
-        "MTB LEVEL 3 MAINTENANCE 1",
-        "MTB LEVEL 5",
-        "MTB LEVEL 5 CLEANING",
-        "Firmware Zone MTB Level 2",
-        "Firmware Zone",
-        "Lobby Zone",
-        "STCP BLOCK A",
-        "MTB LEVEL 3 MAINTENANCE 2",
-    ]
+    GEOZONE_NAME_MAPPING = {
+        "MTB LEVEL 2": "Dummy Geozone",
+        "STCP BLOCK A LEVEL 5": "MTB Level 5",
+        "STCP BLOCK B LEVEL 5": "Ap Geozones",
+        "STCP BLOCK A LEVEL 4": "Postgraduate Lounge",
+        "STCP BLOCK B LEVEL 4": "Japanese Language Centre",
+        "STCP BLOCK A LEVEL 3": "Mizan Research Centre",
+        "STCP BLOCK B LEVEL 3": "Third Floor Lift",
+        "STCP BLOCK A LEVEL 2": "Restroom",
+        "STCP BLOCK B LEVEL 2": "LATLONG 1",
+        "STCP BLOCK A LEVEL 1": "LATLONG2",
+        "STCP BLOCK B LEVEL 1": "LATLONG3",
+        "STCP BLOCK A LEVEL G": "LATLONG4",
+        "STCP BLOCK B LEVEL G": "LATLONG5",
+        "STCP BLOCK A LEVEL B": "LATLONG6",
+        "STCP BLOCK B LEVEL B": "LATLONG7",
+        "MTB LEVEL 3": "ARJUN-GEOZONE-1",
+        "MTB LEVEL 3 MAINTENANCE 1": "ARJUN-GEOZONE-2",
+        "MTB LEVEL 5": "ARJUN-GEOZONE-3",
+        "MTB LEVEL 5 CLEANING": "ARJUN-GEOZONE-4",
+        "Firmware Zone MTB Level 2": "ARJUN-GEOZONE-5",
+        "Firmware Zone": "ARJUN-GEOZONE-6",
+        "Lobby Zone": "ARJUN-GEOZONE-7",
+        "STCP BLOCK A": "ARJUN-GEOZONE-8",
+        "MTB LEVEL 3 MAINTENANCE 2": "ARJUN-GEOZONE-9",
+    }
 
-    old_names = [
-        "Dummy Geozone",
-        "MTB Level 5",
-        "Ap Geozones",
-        "Postgraduate Lounge",
-        "Japanese Language Centre",
-        "Mizan Research Centre",
-        "Third Floor Lift",
-        "Restroom",
-        "LATLONG 1",
-        "LATLONG2",
-        "LATLONG3",
-        "LATLONG4",
-        "LATLONG5",
-        "LATLONG6",
-        "LATLONG7",
-        "ARJUN-GEOZONE-1",
-        "ARJUN-GEOZONE-2",
-        "ARJUN-GEOZONE-3",
-        "ARJUN-GEOZONE-4",
-        "ARJUN-GEOZONE-5",
-        "ARJUN-GEOZONE-6",
-        "ARJUN-GEOZONE-7",
-        "ARJUN-GEOZONE-8",
-        "ARJUN-GEOZONE-9",
-    ]
 
-    name_mapping = dict(zip(old_names, new_names))
-
-    save_df["geozoneName"] = save_df["geozoneName"].replace(name_mapping)
+    save_df["geozoneName"] = save_df["geozoneName"].replace(GEOZONE_NAME_MAPPING)
     
     #======================temporory for UI=======================
     
