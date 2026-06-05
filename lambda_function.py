@@ -121,6 +121,17 @@ def lambda_handler(event, context):
             #CreatedAt = CURRENT_TIMESTAMP
         # ---------------------------------------------------
 
+        
+        # Decode type
+        filtered_df["type"] = TYPE_ENCODER.inverse_transform(
+            filtered_df["type"].astype(int)
+        )
+
+        # Decode reason
+        filtered_df["reason"] = REASON_ENCODER.inverse_transform(
+            filtered_df["reason"].astype(int)
+        )
+        
         output_df = filtered_df[
             [
                 "trolleyId",
