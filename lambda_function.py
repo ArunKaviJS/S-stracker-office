@@ -90,6 +90,12 @@ def lambda_handler(event, context):
         #     )
         # ].copy()
         
+        print('='* 80)
+        print('start and end date')
+        print(start_date)
+        print(end_date)
+        print('='*80)
+        
         
         ###there is no recent data so its giving no maitance on today so making this synthetic
         filtered_df = pred_df[
