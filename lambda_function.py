@@ -4,7 +4,8 @@ import pandas as pd
 from db import (
     load_latest_maintenance,
     save_predictions,
-    get_prediction_window
+    get_prediction_window,
+    save_processed_date
 )
 
 from predictor import (
@@ -80,24 +81,6 @@ def lambda_handler(event, context):
         # Filter requested date window
         # ---------------------------------------------------
 
-        # filtered_df = pred_df[
-        #     (
-        #         pred_df["nextmaintenancedate"] >= pd.to_datetime(start_date)
-        #     )
-        #     &
-        #     (
-        #         pred_df["nextmaintenancedate"] <= pd.to_datetime(end_date)
-        #     )
-        # ].copy()
-        
-        print('='* 80)
-        print('start and end date')
-        print(start_date)
-        print(end_date)
-        print('='*80)
-        
-        
-        ###there is no recent data so its giving no maitance on today so making this synthetic
         filtered_df = pred_df[
             (
                 pred_df["nextmaintenancedate"] >= pd.to_datetime(start_date)
@@ -107,14 +90,19 @@ def lambda_handler(event, context):
                 pred_df["nextmaintenancedate"] <= pd.to_datetime(end_date)
             )
         ].copy()
-
+        
         print(f"Filtered Rows : {len(filtered_df)}")
 
         if filtered_df.empty:
 
+            save_processed_date(
+                start_date,
+                0
+            )
+
             return {
                 "statusCode": 200,
-                "message": "No predictions found for date window",
+                "message": "No predictions found",
                 "start_date": str(start_date.date()),
                 "end_date": str(end_date.date()),
                 "rows_inserted": 0
@@ -168,6 +156,11 @@ def lambda_handler(event, context):
         # ---------------------------------------------------
 
         save_predictions(output_df)
+        
+        save_processed_date(
+            start_date,
+            len(output_df)
+        )
 
         print(f"Inserted Rows : {len(output_df)}")
 
