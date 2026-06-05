@@ -122,7 +122,9 @@ def lambda_handler(event, context):
             "createdOn"
         ]
     ].copy()
-
+     
+     
+     
     save_df.rename(
         columns={
             "hour": "forecast_hour"
@@ -133,8 +135,108 @@ def lambda_handler(event, context):
     save_df["timestamp"] = pd.to_datetime(save_df["timestamp"])
     save_df["createdOn"] = pd.to_datetime(save_df["createdOn"])
     
-    
+    #======================temporory for UI=======================
+    # --------------------------------------------------
+    # Geozone ID Mapping
+    # 1 -> 47, 2 -> 48, ..., 24 -> 70
+    # --------------------------------------------------
 
+    GEOZONE_ID_MAPPING = {
+        1: 47,
+        2: 48,
+        3: 49,
+        4: 50,
+        5: 51,
+        6: 52,
+        7: 53,
+        8: 54,
+        9: 55,
+        10: 56,
+        11: 57,
+        12: 58,
+        13: 59,
+        14: 60,
+        15: 61,
+        16: 62,
+        17: 63,
+        18: 64,
+        19: 65,
+        20: 66,
+        21: 67,
+        22: 68,
+        23: 69,
+        24: 70,
+    }
+
+
+    save_df["geozoneId"] = save_df["geozoneId"].map(GEOZONE_ID_MAPPING)
+    
+    
+    # --------------------------------------------------
+    # Geozone Name Mapping
+    # Based on the order shown in the image
+    # --------------------------------------------------
+
+    new_names = [
+        "MTB LEVEL 2",
+        "STCP BLOCK A LEVEL 5",
+        "STCP BLOCK B LEVEL 5",
+        "STCP BLOCK A LEVEL 4",
+        "STCP BLOCK B LEVEL 4",
+        "STCP BLOCK A LEVEL 3",
+        "STCP BLOCK B LEVEL 3",
+        "STCP BLOCK A LEVEL 2",
+        "STCP BLOCK B LEVEL 2",
+        "STCP BLOCK A LEVEL 1",
+        "STCP BLOCK B LEVEL 1",
+        "STCP BLOCK A LEVEL G",
+        "STCP BLOCK B LEVEL G",
+        "STCP BLOCK A LEVEL B",
+        "STCP BLOCK B LEVEL B",
+        "MTB LEVEL 3",
+        "MTB LEVEL 3 MAINTENANCE 1",
+        "MTB LEVEL 5",
+        "MTB LEVEL 5 CLEANING",
+        "Firmware Zone MTB Level 2",
+        "Firmware Zone",
+        "Lobby Zone",
+        "STCP BLOCK A",
+        "MTB LEVEL 3 MAINTENANCE 2",
+    ]
+
+    old_names = [
+        "Dummy Geozone",
+        "MTB Level 5",
+        "Ap Geozones",
+        "Postgraduate Lounge",
+        "Japanese Language Centre",
+        "Mizan Research Centre",
+        "Third Floor Lift",
+        "Restroom",
+        "LATLONG 1",
+        "LATLONG2",
+        "LATLONG3",
+        "LATLONG4",
+        "LATLONG5",
+        "LATLONG6",
+        "LATLONG7",
+        "ARJUN-GEOZONE-1",
+        "ARJUN-GEOZONE-2",
+        "ARJUN-GEOZONE-3",
+        "ARJUN-GEOZONE-4",
+        "ARJUN-GEOZONE-5",
+        "ARJUN-GEOZONE-6",
+        "ARJUN-GEOZONE-7",
+        "ARJUN-GEOZONE-8",
+        "ARJUN-GEOZONE-9",
+    ]
+
+    name_mapping = dict(zip(old_names, new_names))
+
+    save_df["geozoneName"] = save_df["geozoneName"].replace(name_mapping)
+    
+    #======================temporory for UI=======================
+    
     # Store fresh forecasts
     save_forecasts(save_df)
 
