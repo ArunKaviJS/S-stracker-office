@@ -29,4 +29,4 @@ pipelines:
           - aws s3 cp code.zip s3://ai-stracker-kpi-insights/code.zip
 
           # Deploy to Lambda
-          - aws lambda update-function-code --function-name KPI_Insights --s3-bucket ai-stracker-kpi-insights --s3-key code.zip --region ap-southeast-1
+          - aws lambda update-function-code --function-name KPI-Insights --s3-bucket ai-stracker-kpi-insights --s3-key code.zip --region ap-southeast-1
