@@ -59,14 +59,16 @@ def insert_rows(conn, table, rows):
 
     columns = list(rows[0].keys())
 
-    column_str = ",".join(columns)
+    column_str = ",".join(
+    [f"`{col}`" for col in columns]
+    )
 
     placeholders = ",".join(["%s"] * len(columns))
 
     sql = f"""
-        INSERT INTO {table}
-        ({column_str})
-        VALUES ({placeholders})
+    INSERT INTO `{table}`
+    ({column_str})
+    VALUES ({placeholders})
     """
 
     values = [
