@@ -174,41 +174,157 @@ def rollup_weekly(ai, day):
             (day,))
 
 
+def process_day(main, ai, day):
+
+    next_day = (
+        dt.date.fromisoformat(day)
+        + dt.timedelta(days=1)
+    ).isoformat()
+
+    active = active_trolley_count(main)
+
+    util = fleet_utilisation_rate(
+        main,
+        day,
+        next_day,
+        active
+    )
+
+    counts = daily_alert_counts(
+        main,
+        day
+    )
+
+    mttr = daily_mttr(
+        main,
+        day
+    )
+
+    upsert_daily(
+        ai,
+        day,
+        util,
+        mttr,
+        counts
+    )
+
+    rollup_weekly(
+        ai,
+        day
+    )
+
+    return {
+        "date": day,
+        "utilisation": util,
+        "alerts": counts,
+        "mttr": mttr
+    }
+    
 # ── Handler ──────────────────────────────────────────────────────────────────
 def lambda_handler(event, context):
-    # Process yesterday by default, or event["date"] = "YYYY-MM-DD" for backfill.
-    day = (event or {}).get("date")
-    if not day:
-        day = (dt.date.today() - dt.timedelta(days=1)).isoformat()
-    next_day = (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
 
-    main, ai = main_conn(), ai_conn()
+    event = event or {}
+
+    main = main_conn()
+    ai = ai_conn()
+
     try:
-        active = active_trolley_count(main)
-        util = fleet_utilisation_rate(main, day, next_day, active)
-        counts = daily_alert_counts(main, day)
-        mttr = daily_mttr(main, day)
-        upsert_daily(ai, day, util, mttr, counts)   # tbl_kpi_daily
-        rollup_weekly(ai, day)                       # tbl_kpi_weekly
-        
-        return {
-            "statusCode": 200,
-            "body": {
-                "date": day,
-                "utilisation": util,
-                "alerts": counts,
-                "mttr": mttr
+
+        # ----------------------------------------
+        # Case 1 : Backfill multiple days
+        # ----------------------------------------
+        if event.get("start_date") and event.get("end_date"):
+
+            start = dt.date.fromisoformat(
+                event["start_date"]
+            )
+
+            end = dt.date.fromisoformat(
+                event["end_date"]
+            )
+
+            if start > end:
+
+                return {
+                    "statusCode": 400,
+                    "body": "start_date must be <= end_date"
+                }
+
+            results = []
+
+            d = start
+
+            while d <= end:
+
+                day = d.isoformat()
+
+                print(f"Processing {day}")
+
+                result = process_day(
+                    main,
+                    ai,
+                    day
+                )
+
+                results.append(result)
+
+                d += dt.timedelta(days=1)
+
+            return {
+                "statusCode": 200,
+                "processed_count": len(results),
+                "start_date": event["start_date"],
+                "end_date": event["end_date"],
+                "results": results
             }
-        }
-        
+
+        # ----------------------------------------
+        # Case 2 : Single date
+        # ----------------------------------------
+        elif event.get("date"):
+
+            result = process_day(
+                main,
+                ai,
+                event["date"]
+            )
+
+            return {
+                "statusCode": 200,
+                "body": result
+            }
+
+        # ----------------------------------------
+        # Case 3 : Scheduled Lambda ({})
+        # ----------------------------------------
+        else:
+
+            day = (
+                dt.date.today()
+                - dt.timedelta(days=1)
+            ).isoformat()
+
+            result = process_day(
+                main,
+                ai,
+                day
+            )
+
+            return {
+                "statusCode": 200,
+                "body": result
+            }
+
     except Exception as e:
-         return {
+
+        print(e)
+
+        return {
             "statusCode": 500,
             "body": str(e)
         }
-        
+
     finally:
+
         main.close()
         ai.close()
-
-
