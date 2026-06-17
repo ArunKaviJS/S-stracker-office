@@ -28,6 +28,24 @@ def build_predictions(
         map_reason
     )
 
+    MAJOR_REASONS = {
+        "Accident",
+        "Broken & Needs Welding",
+        "Frame Damage",
+        "Motor Failure",
+        "Structural Damage"
+    }
+
+    latest.loc[
+        latest["reason"].isin(MAJOR_REASONS),
+        "type"
+    ] = "Major"
+
+    latest.loc[
+        ~latest["reason"].isin(MAJOR_REASONS),
+        "type"
+    ] = "Minor"
+
     latest["createdOn"] = pd.to_datetime(
         latest["createdOn"]
     )
