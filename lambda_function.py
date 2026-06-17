@@ -1,14 +1,11 @@
 import os
 import pymysql
 
-TABLES = [
-    "tbl_trolley_maintenance",
-    "tbl_device_history",
-    "tbl_trolley",
-    "tbl_alerts",
-    "tbl_kpi_daily",
-    "tbl_kpi_weekly"
-]
+TABLE_ID_COLUMN = {
+    "tbl_trolley_maintenance": "maintenanceId",
+    "tbl_device_history": "historyId",
+    "tbl_trolley": "trolleyId",
+}
 
 
 def get_connection(host, user, password, database):
@@ -23,22 +20,30 @@ def get_connection(host, user, password, database):
 
 
 def get_max_id(conn, table):
+
+    id_col = TABLE_ID_COLUMN[table]
+
     with conn.cursor() as cur:
+
         cur.execute(f"""
-            SELECT COALESCE(MAX(id),0) as max_id
-            FROM {table}
+            SELECT COALESCE(MAX(`{id_col}`), 0) as max_id
+            FROM `{table}`
         """)
+
         return cur.fetchone()["max_id"]
 
 
 def get_new_rows(conn, table, last_id):
+
+    id_col = TABLE_ID_COLUMN[table]
+
     with conn.cursor() as cur:
 
         cur.execute(f"""
             SELECT *
-            FROM {table}
-            WHERE id > %s
-            ORDER BY id
+            FROM `{table}`
+            WHERE `{id_col}` > %s
+            ORDER BY `{id_col}`
         """, (last_id,))
 
         return cur.fetchall()
