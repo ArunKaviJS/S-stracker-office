@@ -1,101 +1,196 @@
 import os
+import pymysql
 
-from sqlalchemy import create_engine
+TABLES = [
+    "tbl_trolley_maintenance",
+    "tbl_device_history",
+    "tbl_trolley",
+    "tbl_alerts",
+    "tbl_kpi_daily",
+    "tbl_kpi_weekly"
+]
 
-from fetch_data_and_copy import fetch_and_copy_data
 
-from Idle_Trolleys_Logic import process_idle_trolleys
+def get_connection(host, user, password, database):
+    return pymysql.connect(
+        host=host,
+        user=user,
+        password=password,
+        database=database,
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False
+    )
 
-from Geozone_Performance_Logic import (
-    process_underperforming_geozones
-)
 
-# ============================================================
-# SOURCE DB
-# ============================================================
+def get_max_id(conn, table):
+    with conn.cursor() as cur:
+        cur.execute(f"""
+            SELECT COALESCE(MAX(id),0) as max_id
+            FROM {table}
+        """)
+        return cur.fetchone()["max_id"]
 
-SOURCE_HOST = os.getenv("SOURCE_DB_HOST")
-SOURCE_USER = os.getenv("SOURCE_DB_USER")
-SOURCE_PASSWORD = os.getenv("SOURCE_DB_PASSWORD")
-SOURCE_DATABASE = os.getenv("SOURCE_DB_NAME")
 
-# ============================================================
-# DESTINATION DB
-# ============================================================
+def get_new_rows(conn, table, last_id):
+    with conn.cursor() as cur:
 
-DEST_HOST = os.getenv("DEST_DB_HOST")
-DEST_USER = os.getenv("DEST_DB_USER")
-DEST_PASSWORD = os.getenv("DEST_DB_PASSWORD")
-DEST_DATABASE = os.getenv("DEST_DB_NAME")
+        cur.execute(f"""
+            SELECT *
+            FROM {table}
+            WHERE id > %s
+            ORDER BY id
+        """, (last_id,))
 
-# ============================================================
-# SQLALCHEMY CONNECTIONS
-# ============================================================
+        return cur.fetchall()
 
-source_engine = create_engine(
-    f"mysql+pymysql://{SOURCE_USER}:{SOURCE_PASSWORD}@{SOURCE_HOST}:3306/{SOURCE_DATABASE}"
-)
 
-dest_engine = create_engine(
-    f"mysql+pymysql://{DEST_USER}:{DEST_PASSWORD}@{DEST_HOST}:3306/{DEST_DATABASE}"
-)
+def insert_rows(conn, table, rows):
 
-# ============================================================
-# LAMBDA HANDLER
-# ============================================================
+    if not rows:
+        return 0
 
-def lambda_handler(event, context):
+    columns = list(rows[0].keys())
+
+    column_str = ",".join(columns)
+
+    placeholders = ",".join(["%s"] * len(columns))
+
+    sql = f"""
+        INSERT INTO {table}
+        ({column_str})
+        VALUES ({placeholders})
+    """
+
+    values = [
+        tuple(row[col] for col in columns)
+        for row in rows
+    ]
 
     try:
 
-        # ====================================================
-        # STEP 1 -> FETCH NEW DATA
-        # ====================================================
+        with conn.cursor() as cur:
 
-        new_data_found = fetch_and_copy_data(
-            source_engine,
-            dest_engine
+            cur.executemany(sql, values)
+
+        conn.commit()
+
+        return len(rows)
+
+    except Exception:
+
+        conn.rollback()
+
+        raise
+
+
+
+
+#==========check table exist======
+def table_exists(conn, table):
+
+    with conn.cursor() as cur:
+
+        cur.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+            AND table_name = %s
+        """, (table,))
+
+        return cur.fetchone()["cnt"] > 0
+
+
+#=============create table likely in main db if not exist======
+def create_table_like(main_conn, ai_conn, table):
+
+    main_db = os.environ["DB_DATABASE"]
+    ai_db = os.environ["AI_DB_DATABASE"]
+
+    with ai_conn.cursor() as cur:
+
+        cur.execute(f"""
+            CREATE TABLE {ai_db}.{table}
+            LIKE {main_db}.{table}
+        """)
+
+    ai_conn.commit()
+
+    print(f"Created table {table} in AI_DB")
+    
+    
+def sync_table(main_conn, ai_conn, table):
+
+    print(f"Syncing {table}")
+
+    # Fallback: table missing in AI_DB
+    if not table_exists(ai_conn, table):
+
+        print(f"{table} not found in AI_DB")
+
+        create_table_like(
+            main_conn,
+            ai_conn,
+            table
         )
 
-        # ====================================================
-        # STEP 2 -> NO NEW DATA
-        # ====================================================
+    # Existing flow (unchanged)
 
-        if not new_data_found:
+    last_ai_id = get_max_id(ai_conn, table)
 
-            return {
-                "statusCode": 200,
-                "message": "No New Data"
-            }
+    print("Last AI id:", last_ai_id)
 
-        # ====================================================
-        # STEP 3 -> IDLE TROLLEYS
-        # ====================================================
+    rows = get_new_rows(
+        main_conn,
+        table,
+        last_ai_id
+    )
 
-        process_idle_trolleys(
-            dest_engine
-        )
+    print("Rows to copy:", len(rows))
 
-        # ====================================================
-        # STEP 4 -> UNDERPERFORMING GEOZONES
-        # ====================================================
+    inserted = insert_rows(
+        ai_conn,
+        table,
+        rows
+    )
 
-        process_underperforming_geozones(
-            dest_engine
-        )
+    print(f"Inserted {inserted} rows")
 
-        # ====================================================
-        # RESPONSE
-        # ====================================================
+def lambda_handler(event, context):
+
+    main_conn = get_connection(
+        os.environ["DB_HOST"],
+        os.environ["DB_USERNAME"],
+        os.environ["DB_PASSWORD"],
+        os.environ["DB_DATABASE"]
+    )
+
+    ai_conn = get_connection(
+        os.environ["AI_DB_HOST"],
+        os.environ["AI_DB_USERNAME"],
+        os.environ["AI_DB_PASSWORD"],
+        os.environ["AI_DB_DATABASE"]
+    )
+
+    try:
+
+        for table in TABLES:
+
+            try:
+                sync_table(main_conn, ai_conn, table)
+
+            except Exception as e:
+
+                print(f"Error syncing {table}")
+
+                print(e)
 
         return {
             "statusCode": 200,
-            "message": "Success"
+            "body": "Sync completed"
         }
 
-    except Exception as e:
+    finally:
 
-        return {
-            "statusCode": 500,
-            "error": str(e)
-        }
+        main_conn.close()
+
+        ai_conn.close()
