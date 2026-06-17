@@ -1,6 +1,8 @@
 import os
 import pymysql
 
+TABLES = [ "tbl_trolley_maintenance", "tbl_device_history", "tbl_trolley"]
+
 TABLE_ID_COLUMN = {
     "tbl_trolley_maintenance": "maintenanceId",
     "tbl_device_history": "historyId",
