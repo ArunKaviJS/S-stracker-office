@@ -288,6 +288,7 @@ def lambda_handler(event, context):
                 ai,
                 event["date"]
             )
+            
 
             return {
                 "statusCode": 200,
@@ -298,12 +299,13 @@ def lambda_handler(event, context):
         # Case 3 : Scheduled Lambda ({})
         # ----------------------------------------
         else:
-
+            print('Lambda Triggered with EventBridge')
             day = (
                 dt.date.today()
                 - dt.timedelta(days=1)
             ).isoformat()
 
+            print('Processing Date',day)
             result = process_day(
                 main,
                 ai,
@@ -315,6 +317,7 @@ def lambda_handler(event, context):
                 "body": result
             }
 
+        
     except Exception as e:
 
         print(e)
@@ -323,8 +326,12 @@ def lambda_handler(event, context):
             "statusCode": 500,
             "body": str(e)
         }
-
+    
+    
     finally:
 
         main.close()
         ai.close()
+
+        print('====Print Completed====')
+    
