@@ -10,39 +10,42 @@ from response_store import create_response_table, save_response
 
 def lambda_handler(event, context):
 
-    body = event
-
-    if "body" in event:
-        body = json.loads(event["body"])
-
-    question = body.get("question", "")
-    user_id  = body.get("userId", "")
-
-    create_response_table()
-
-    # Fallback: SQL generation failure
     try:
-        sql = generate_sql(question)
-        validate_sql(sql)
-    except Exception:
-        save_response(
-            user_id=user_id,
-            question=question,
-            sql_query=None,
-            intent="sql_error",
-            chat_title="I could not interpret that question",
-            response=None
-        )
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
+
+        body = event
+
+        if "body" in event:
+            body = json.loads(event["body"])
+
+        question = body.get("question", "")
+        user_id  = body.get("userId", "")
+
+        create_response_table()
+
+        # SQL generation — fallback stored and returned on failure
+        try:
+            sql = generate_sql(question)
+            validate_sql(sql)
+        except Exception:
+            sql_error_result = {
                 "intent": "sql_error",
                 "chat_title": "I could not interpret that question",
                 "response": None
-            })
-        }
+            }
+            save_response(
+                user_id=user_id,
+                question=question,
+                sql_query=None,
+                intent=sql_error_result["intent"],
+                chat_title=sql_error_result["chat_title"],
+                response=sql_error_result["response"]
+            )
+            return {
+                "statusCode": 200,
+                "body": json.dumps(sql_error_result)
+            }
 
-    try:
+        # Main flow
         df = execute_query(sql)
 
         result = route(
