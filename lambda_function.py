@@ -55,7 +55,26 @@ def lambda_handler(event, context):
 
         # Main flow — LLM call 3 happens inside route() only for single_line/summary
         print('Executing Query')
-        df = execute_query(sql)
+        try:
+            df = execute_query(sql)
+        except Exception:
+            sql_error_result = {
+                "intent": "sql_error",
+                "chat_title": "I could not interpret that question",
+                "response": None
+            }
+            save_response(
+                user_id=user_id,
+                question=question,
+                sql_query=sql,
+                intent=sql_error_result["intent"],
+                chat_title=sql_error_result["chat_title"],
+                response=sql_error_result["response"]
+            )
+            return {
+                "statusCode": 200,
+                "body": json.dumps(sql_error_result)
+            }
 
         result = route(
             question,
