@@ -1,6 +1,7 @@
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from llm import generate_sql_and_intent, get_client
+from llm import generate_sql, detect_intent, get_client
 from db import execute_query
 from router import route
 from config import AZURE_OPENAI_DEPLOYMENT
@@ -22,11 +23,17 @@ def lambda_handler(event, context):
 
         create_response_table()
 
-        # LLM call 1: generate SQL + detect intent together
+        # LLM call 1 & 2 in parallel: SQL generation + intent detection
         try:
-            print('Generating Query')
-            sql, intent = generate_sql_and_intent(question)
+            print('Generating Query and Intent')
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                future_sql    = executor.submit(generate_sql, question)
+                future_intent = executor.submit(detect_intent, question)
+                sql    = future_sql.result()
+                intent = future_intent.result()
+
             validate_sql(sql)
+
         except Exception:
             sql_error_result = {
                 "intent": "sql_error",
@@ -46,7 +53,7 @@ def lambda_handler(event, context):
                 "body": json.dumps(sql_error_result)
             }
 
-        # Main flow — LLM call 2 happens inside route() only for single_line/summary
+        # Main flow — LLM call 3 happens inside route() only for single_line/summary
         print('Executing Query')
         df = execute_query(sql)
 

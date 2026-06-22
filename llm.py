@@ -29,62 +29,64 @@ def get_client():
     return _client
 
 
-def generate_sql_and_intent(question):
-    """
-    Single LLM call that returns both the MySQL query and the intent.
-
-    Returns: (sql: str, intent: str)
-    intent is one of: single_line | table | summary
-    """
+def generate_sql(question):
+    """Generate a MySQL query for the given question."""
 
     client = get_client()
-
-    system_prompt = (
-        SCHEMA_CONTEXT +
-        "\n\n"
-        "=======================================================================\n"
-        "RESPONSE FORMAT\n"
-        "=======================================================================\n"
-        "Return ONLY valid JSON — no markdown fences, no extra text:\n"
-        "{\n"
-        '  "sql": "<MySQL query>",\n'
-        '  "intent": "<single_line | table | summary>"\n'
-        "}\n\n"
-        "Intent rules:\n"
-        "  single_line – question expects one value or a very short factual answer\n"
-        "                (e.g. 'which trolley is most idle?', 'what is the total count?')\n"
-        "  table       – question expects a list or tabular data\n"
-        "                (e.g. 'show all idle trolleys', 'list trolleys idle for more than 10 hours')\n"
-        "  summary     – question expects a narrative analysis, report, or summary\n"
-        "                (e.g. 'show me the alert summary for this week', 'give me a weekly report')\n"
-    )
 
     response = client.chat.completions.create(
         model=AZURE_OPENAI_DEPLOYMENT,
         temperature=0,
         messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": f"Question: {question}"}
+            {"role": "system", "content": SCHEMA_CONTEXT},
+            {"role": "user",   "content": f"Write a MySQL query for: {question}"}
         ]
     )
 
-    raw = response.choices[0].message.content.strip()
-
-    parsed = json.loads(raw)
+    sql = response.choices[0].message.content.strip()
 
     sql = (
-        parsed["sql"]
+        sql
         .replace("```sql", "")
         .replace("```", "")
         .strip()
     )
 
-    intent = parsed.get("intent", "table").strip().lower()
+    return sql
+
+
+def detect_intent(question):
+    """Classify question into single_line, table, or summary."""
+
+    client = get_client()
+
+    response = client.chat.completions.create(
+        model=AZURE_OPENAI_DEPLOYMENT,
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Classify the user's question into exactly one intent:\n"
+                    "- single_line: expects a single value or very short factual answer "
+                    "(e.g. 'which trolley is most idle?', 'what is the total count?')\n"
+                    "- table: expects a list or tabular data "
+                    "(e.g. 'show all idle trolleys', 'list trolleys idle for more than 10 hours')\n"
+                    "- summary: expects a narrative analysis, report, or summary "
+                    "(e.g. 'show me the alert summary for this week', 'give me a weekly report')\n\n"
+                    "Return ONLY one word: single_line, table, or summary"
+                )
+            },
+            {"role": "user", "content": question}
+        ]
+    )
+
+    intent = response.choices[0].message.content.strip().lower()
 
     if intent not in ("single_line", "table", "summary"):
         intent = "table"
 
-    return sql, intent
+    return intent
 
 
 def narrate(client, deployment, question, df):
