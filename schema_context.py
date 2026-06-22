@@ -219,6 +219,45 @@ Columns :
   status             TINYINT     1=active
   trolleyId          INT         FK → tbl_trolley.trolleyId
 
+── 11. tbl_alerts ──────────────────────────────────────────────────────
+Purpose : Active alert records per trolley (e.g. scattered trolley, out-of-zone).
+Columns :
+  alertId            INT         Primary Key
+  alertName          VARCHAR     e.g. "SCATTERED TROLLEY", "TROLLEY OUT OF ZONE"
+  key                VARCHAR     Unique alert code e.g. "ST-221225-26023"
+  trolleyId          INT         FK → tbl_trolley.trolleyId
+  createdOn          DATETIME
+  modifiedOn         DATETIME    NULL if not yet resolved
+  status             TINYINT     0=active alert, 1=resolved
+  recentGeozoneId    INT         FK → tbl_geozones.geozoneId
+  assigneeId         INT         Assigned staff id (0 = unassigned)
+
+── 12. tbl_alerts_history ──────────────────────────────────────────────
+Purpose : Audit log of every action taken on an alert (trigger, resolve, etc.).
+Columns :
+  historyId          INT         Primary Key
+  alertId            INT         FK → tbl_alerts.alertId
+  title              VARCHAR     e.g. "Alert Triggered"
+  notes              TEXT        Human-readable description of the alert event
+  doneBy             INT         Staff id who acted (0 = system)
+  createdOn          DATETIME
+  status             TINYINT     1=active
+  id                 INT         Reference id (trolleyId or other entity)
+  type               VARCHAR     e.g. "trigger", "resolve"
+
+── 13. tbl_duty_roaster ────────────────────────────────────────────────
+Purpose : Shift-wise duty roster recording pusher and worker headcount per shift.
+Columns :
+  rosterId           INT         Primary Key
+  shift              VARCHAR     e.g. "day", "night"
+  totalPushers       INT         Number of trolley pushers on this shift
+  totalWorkers       INT         Number of workers on this shift
+  createdOn          DATETIME
+  modifiedOn         DATETIME    NULL if not yet modified
+  status             TINYINT     1=active
+  shiftDate          DATETIME    Actual date/time the shift applies to
+  
+  
 =======================================================================
 FOREIGN KEY RELATIONSHIPS (JOIN ONLY ON THESE)
 =======================================================================
@@ -238,7 +277,10 @@ FOREIGN KEY RELATIONSHIPS (JOIN ONLY ON THESE)
   tbl_device_claim_history.deviceId  = tbl_device.deviceId
   tbl_nest.geozoneId                 = tbl_geozones.geozoneId
   tbl_geozones.geolayerId            = tbl_geolayers.geolayerId
-
+  tbl_alerts.trolleyId               = tbl_trolley.trolleyId
+  tbl_alerts.recentGeozoneId         = tbl_geozones.geozoneId
+  tbl_alerts_history.alertId         = tbl_alerts.alertId
+  
 =======================================================================
 QUERY ROUTING GUIDE
 =======================================================================
@@ -250,4 +292,7 @@ QUERY ROUTING GUIDE
   Trolley maintenance history            → tbl_trolley_maintanence
   Battery warranty                       → tbl_battery (JOIN via tbl_trolley.serialNo)
   Device warranty / claim                → tbl_device, tbl_device_claim_history
+  Active / open alerts per trolley      → tbl_alerts (status = 0 for active)
+  Alert event log / history             → tbl_alerts_history JOIN tbl_alerts
+  Shift headcount / duty roster         → tbl_duty_roaster
 """

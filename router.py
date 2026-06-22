@@ -1,156 +1,89 @@
-from s3_utils import upload_dataframe_to_s3
 import json
+import math
 
-SMALL_ROWS = 10
-SMALL_COLS = 4
+from llm import detect_intent, narrate, generate_chat_title, generate_summary
+from s3_utils import upload_dataframe_to_s3_xlsx
+
+PAGE_SIZE = 10
+S3_THRESHOLD = 50
 
 
-def generate_table_summary(
-        client,
-        deployment,
-        question,
-        df
-):
-
-    sample = df.head(20).to_string(index=False)
-
-    response = client.chat.completions.create(
-        model=deployment,
-        temperature=0,
-        messages=[
-            {
-                "role": "system",
-                "content":
-                """
-                You are a data analyst.
-
-                Return ONLY valid JSON.
-
-                {
-                  "title": "...",
-                  "summary": "..."
-                }
-
-                title:
-                Short dashboard-style heading.
-
-                summary:
-                One or two sentences.
-                """
-            },
-            {
-                "role": "user",
-                "content":
-                f"""
-                Question:
-                {question}
-
-                Sample Data:
-                {sample}
-                """
-            }
-        ]
-    )
-
-    return json.loads(
-        response.choices[0]
-        .message.content
-    )
-
-def narrate(client, deployment, question, df):
-
-    txt = df.to_string(index=False)
-
-    response = client.chat.completions.create(
-        model=deployment,
-        temperature=0.3,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a trolley management assistant. "
-                    "Answer in 1-3 sentences."
-                )
-            },
-            {
-                "role": "user",
-                "content":
-                f"Question: {question}\n\n"
-                f"Database Result:\n{txt}"
-            }
-        ]
-    )
-
-    return response.choices[0].message.content
+def _paginate(df):
+    """Split df into pages of PAGE_SIZE rows, returned as a dict."""
+    records = df.to_dict("records")
+    total_pages = math.ceil(len(records) / PAGE_SIZE)
+    pages = {}
+    for i in range(total_pages):
+        start = i * PAGE_SIZE
+        pages[f"page_{i + 1}"] = records[start: start + PAGE_SIZE]
+    return pages
 
 
 def route(question, df, client, deployment):
+    """
+    Determine intent and build the response dict:
+      {
+        "intent": str,
+        "chat_title": str,
+        "response": None | dict | str   # None for single_line, dict/str otherwise
+      }
+    """
 
-    rows, cols = df.shape
+    rows, _ = df.shape
 
+    # Fallback: no data returned by query
     if rows == 0:
-
         return {
-            "response_type": "text",
-            "message": "No data found.",
-            "row_count": 0,
-            "columns": [],
-            "data": []
+            "intent": "no_data",
+            "chat_title": "No data found for this query",
+            "response": None
         }
 
-    small_result = (
-        rows <= SMALL_ROWS and
-        cols <= SMALL_COLS
-    )
+    intent = detect_intent(question)
 
-    if small_result:
-
-        answer = narrate(
-            client,
-            deployment,
-            question,
-            df
-        )
-
+    # --- single_line intent ---
+    if intent == "single_line":
+        answer = narrate(client, deployment, question, df)
         return {
-            "response_type": "text",
-            "message": answer,
-            "row_count": rows,
-            "columns": list(df.columns),
-            "data": df.to_dict("records")
+            "intent": "single_line",
+            "chat_title": answer,
+            "response": None
         }
 
-    table_info = generate_table_summary(
-    client,
-    deployment,
-    question,
-    df
-    )
+    # --- summary intent ---
+    if intent == "summary":
+        chat_title = generate_chat_title(question)
+        df_text = df.to_string(index=False)
+        summary_data = generate_summary(question, df_text)
+        return {
+            "intent": "summary",
+            "chat_title": chat_title,
+            "response": summary_data
+        }
 
-    csv_url = upload_dataframe_to_s3(df)
-    
+    # --- table intent ---
+    chat_title = f"{rows} results found in your query"
+
+    if rows <= PAGE_SIZE:
+        # ≤10 rows: store full table as JSON list
+        return {
+            "intent": "table",
+            "chat_title": chat_title,
+            "response": df.to_dict("records")
+        }
+
+    if rows <= S3_THRESHOLD:
+        # 11–50 rows: paginated JSON
+        return {
+            "intent": "table",
+            "chat_title": chat_title,
+            "response": _paginate(df)
+        }
+
+    # >50 rows: upload as XLSX to S3
+    xlsx_url = upload_dataframe_to_s3_xlsx(df)
     return {
-
-        "response_type": "table",
-        
-        "title":
-        table_info["title"],
-
-        "summary":
-        table_info["summary"],
-
-        "message":
-        f"Found {rows} records.",
-
-        "row_count":
-        rows,
-
-        "columns":
-        list(df.columns),
-
-        "data":
-        df.to_dict("records"),
-        
-        "csv_url":
-        csv_url
+        "intent": "table",
+        "chat_title": chat_title,
+        "response": xlsx_url
     }

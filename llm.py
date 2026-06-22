@@ -1,3 +1,5 @@
+import json
+
 from openai import AzureOpenAI
 
 from config import (
@@ -56,3 +58,148 @@ def generate_sql(question):
     )
 
     return sql
+
+
+def detect_intent(question):
+    """Classify question into single_line, table, or summary."""
+
+    client = get_client()
+
+    response = client.chat.completions.create(
+        model=AZURE_OPENAI_DEPLOYMENT,
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Classify the user's question into exactly one intent:\n"
+                    "- single_line: expects a single value or very short factual answer "
+                    "(e.g. 'which trolley is most idle?', 'what is the total count?')\n"
+                    "- table: expects a list or tabular data "
+                    "(e.g. 'show all idle trolleys', 'list trolleys idle for more than 10 hours')\n"
+                    "- summary: expects a narrative analysis, report, or summary "
+                    "(e.g. 'show me the alert summary for this week', 'give me a weekly report')\n\n"
+                    "Return ONLY one word: single_line, table, or summary"
+                )
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
+    )
+
+    intent = response.choices[0].message.content.strip().lower()
+
+    if intent not in ("single_line", "table", "summary"):
+        intent = "table"
+
+    return intent
+
+
+def narrate(client, deployment, question, df):
+    """Generate a 1-3 sentence answer for single_line intent."""
+
+    txt = df.to_string(index=False)
+
+    response = client.chat.completions.create(
+        model=deployment,
+        temperature=0.3,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a trolley management assistant. "
+                    "Answer in 1-3 sentences."
+                )
+            },
+            {
+                "role": "user",
+                "content":
+                f"Question: {question}\n\n"
+                f"Database Result:\n{txt}"
+            }
+        ]
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+def generate_chat_title(question):
+    """Generate a short dashboard-style title for summary intent."""
+
+    client = get_client()
+
+    response = client.chat.completions.create(
+        model=AZURE_OPENAI_DEPLOYMENT,
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Generate a short dashboard-style title (max 8 words) for this question. "
+                    "Return only the title text, nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+def generate_summary(question, df_text):
+    """
+    Generate a structured summary for summary intent.
+
+    Returns a dict with keys:
+      intro   - one-line headline sentence
+      sections - list of {icon, title, type, items} objects
+                 type is 'paragraph' | 'bullets' | 'numbered'
+    """
+
+    client = get_client()
+
+    response = client.chat.completions.create(
+        model=AZURE_OPENAI_DEPLOYMENT,
+        temperature=0.3,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a logistics data analyst. "
+                    "Analyse the data and return ONLY valid JSON matching this schema:\n\n"
+                    "{\n"
+                    '  "intro": "<one sentence headline insight>",\n'
+                    '  "sections": [\n'
+                    '    {\n'
+                    '      "icon": "<emoji>",\n'
+                    '      "title": "<section title>",\n'
+                    '      "type": "paragraph | bullets | numbered",\n'
+                    '      "items": ["<line1>", "<line2>"]\n'
+                    "    }\n"
+                    "  ]\n"
+                    "}\n\n"
+                    "Always include:\n"
+                    "  - A 📖 Details section (type: paragraph, single item)\n"
+                    "  - A key insights section with an appropriate icon (type: bullets)\n"
+                    "  - A recommended actions section with an appropriate icon (type: numbered)\n"
+                    "  - An expected benefits section with an appropriate icon (type: bullets)\n"
+                    "Section titles and icons should match the context of the question. "
+                    "Do NOT wrap in markdown code fences."
+                )
+            },
+            {
+                "role": "user",
+                "content":
+                f"Question: {question}\n\nData:\n{df_text}"
+            }
+        ]
+    )
+
+    raw = response.choices[0].message.content.strip()
+
+    return json.loads(raw)
