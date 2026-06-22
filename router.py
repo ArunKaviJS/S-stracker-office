@@ -1,7 +1,6 @@
-import json
 import math
 
-from llm import detect_intent, narrate, generate_chat_title, generate_summary
+from llm import narrate, generate_summary
 from s3_utils import upload_dataframe_to_s3_xlsx
 
 PAGE_SIZE = 10
@@ -19,13 +18,13 @@ def _paginate(df):
     return pages
 
 
-def route(question, df, client, deployment):
+def route(question, intent, df, client, deployment):
     """
-    Determine intent and build the response dict:
+    Build the response dict using the pre-detected intent:
       {
         "intent": str,
         "chat_title": str,
-        "response": None | dict | str   # None for single_line, dict/str otherwise
+        "response": None | dict | str
       }
     """
 
@@ -39,8 +38,6 @@ def route(question, df, client, deployment):
             "response": None
         }
 
-    intent = detect_intent(question)
-
     # --- single_line intent ---
     if intent == "single_line":
         answer = narrate(client, deployment, question, df)
@@ -52,9 +49,8 @@ def route(question, df, client, deployment):
 
     # --- summary intent ---
     if intent == "summary":
-        chat_title = generate_chat_title(question)
-        df_text = df.to_string(index=False)
-        summary_data = generate_summary(question, df_text)
+        summary_data = generate_summary(question, df.to_string(index=False))
+        chat_title = summary_data.pop("chat_title", question)
         return {
             "intent": "summary",
             "chat_title": chat_title,
@@ -65,7 +61,6 @@ def route(question, df, client, deployment):
     chat_title = f"{rows} results found in your query"
 
     if rows <= PAGE_SIZE:
-        # ≤10 rows: store full table as JSON list
         return {
             "intent": "table",
             "chat_title": chat_title,
@@ -73,7 +68,6 @@ def route(question, df, client, deployment):
         }
 
     if rows <= S3_THRESHOLD:
-        # 11–50 rows: paginated JSON
         return {
             "intent": "table",
             "chat_title": chat_title,

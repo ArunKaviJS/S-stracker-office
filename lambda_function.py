@@ -1,6 +1,6 @@
 import json
 
-from llm import generate_sql, get_client
+from llm import generate_sql_and_intent, get_client
 from db import execute_query
 from router import route
 from config import AZURE_OPENAI_DEPLOYMENT
@@ -22,9 +22,10 @@ def lambda_handler(event, context):
 
         create_response_table()
 
-        # SQL generation — fallback stored and returned on failure
+        # LLM call 1: generate SQL + detect intent together
         try:
-            sql = generate_sql(question)
+            print('Generating Query')
+            sql, intent = generate_sql_and_intent(question)
             validate_sql(sql)
         except Exception:
             sql_error_result = {
@@ -45,11 +46,13 @@ def lambda_handler(event, context):
                 "body": json.dumps(sql_error_result)
             }
 
-        # Main flow
+        # Main flow — LLM call 2 happens inside route() only for single_line/summary
+        print('Executing Query')
         df = execute_query(sql)
 
         result = route(
             question,
+            intent,
             df,
             get_client(),
             AZURE_OPENAI_DEPLOYMENT

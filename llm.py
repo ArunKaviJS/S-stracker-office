@@ -29,76 +29,66 @@ def get_client():
     return _client
 
 
-def generate_sql(question):
+def generate_sql_and_intent(question):
+    """
+    Single LLM call that returns both the MySQL query and the intent.
+
+    Returns: (sql: str, intent: str)
+    intent is one of: single_line | table | summary
+    """
 
     client = get_client()
+
+    system_prompt = (
+        SCHEMA_CONTEXT +
+        "\n\n"
+        "=======================================================================\n"
+        "RESPONSE FORMAT\n"
+        "=======================================================================\n"
+        "Return ONLY valid JSON — no markdown fences, no extra text:\n"
+        "{\n"
+        '  "sql": "<MySQL query>",\n'
+        '  "intent": "<single_line | table | summary>"\n'
+        "}\n\n"
+        "Intent rules:\n"
+        "  single_line – question expects one value or a very short factual answer\n"
+        "                (e.g. 'which trolley is most idle?', 'what is the total count?')\n"
+        "  table       – question expects a list or tabular data\n"
+        "                (e.g. 'show all idle trolleys', 'list trolleys idle for more than 10 hours')\n"
+        "  summary     – question expects a narrative analysis, report, or summary\n"
+        "                (e.g. 'show me the alert summary for this week', 'give me a weekly report')\n"
+    )
 
     response = client.chat.completions.create(
         model=AZURE_OPENAI_DEPLOYMENT,
         temperature=0,
         messages=[
-            {
-                "role": "system",
-                "content": SCHEMA_CONTEXT
-            },
-            {
-                "role": "user",
-                "content": f"Write a MySQL query for: {question}"
-            }
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": f"Question: {question}"}
         ]
     )
 
-    sql = response.choices[0].message.content.strip()
+    raw = response.choices[0].message.content.strip()
+
+    parsed = json.loads(raw)
 
     sql = (
-        sql
+        parsed["sql"]
         .replace("```sql", "")
         .replace("```", "")
         .strip()
     )
 
-    return sql
-
-
-def detect_intent(question):
-    """Classify question into single_line, table, or summary."""
-
-    client = get_client()
-
-    response = client.chat.completions.create(
-        model=AZURE_OPENAI_DEPLOYMENT,
-        temperature=0,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "Classify the user's question into exactly one intent:\n"
-                    "- single_line: expects a single value or very short factual answer "
-                    "(e.g. 'which trolley is most idle?', 'what is the total count?')\n"
-                    "- table: expects a list or tabular data "
-                    "(e.g. 'show all idle trolleys', 'list trolleys idle for more than 10 hours')\n"
-                    "- summary: expects a narrative analysis, report, or summary "
-                    "(e.g. 'show me the alert summary for this week', 'give me a weekly report')\n\n"
-                    "Return ONLY one word: single_line, table, or summary"
-                )
-            },
-            {
-                "role": "user",
-                "content": question
-            }
-        ]
-    )
-
-    intent = response.choices[0].message.content.strip().lower()
+    intent = parsed.get("intent", "table").strip().lower()
 
     if intent not in ("single_line", "table", "summary"):
         intent = "table"
 
-    return intent
+    return sql, intent
 
 
 def narrate(client, deployment, question, df):
-    """Generate a 1-3 sentence answer for single_line intent."""
+    """Single LLM call: 1-3 sentence answer for single_line intent."""
 
     txt = df.to_string(index=False)
 
@@ -115,35 +105,7 @@ def narrate(client, deployment, question, df):
             },
             {
                 "role": "user",
-                "content":
-                f"Question: {question}\n\n"
-                f"Database Result:\n{txt}"
-            }
-        ]
-    )
-
-    return response.choices[0].message.content.strip()
-
-
-def generate_chat_title(question):
-    """Generate a short dashboard-style title for summary intent."""
-
-    client = get_client()
-
-    response = client.chat.completions.create(
-        model=AZURE_OPENAI_DEPLOYMENT,
-        temperature=0,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "Generate a short dashboard-style title (max 8 words) for this question. "
-                    "Return only the title text, nothing else."
-                )
-            },
-            {
-                "role": "user",
-                "content": question
+                "content": f"Question: {question}\n\nDatabase Result:\n{txt}"
             }
         ]
     )
@@ -153,12 +115,16 @@ def generate_chat_title(question):
 
 def generate_summary(question, df_text):
     """
-    Generate a structured summary for summary intent.
+    Single LLM call for summary intent.
 
-    Returns a dict with keys:
-      intro   - one-line headline sentence
-      sections - list of {icon, title, type, items} objects
-                 type is 'paragraph' | 'bullets' | 'numbered'
+    Returns a dict:
+      {
+        "chat_title": "<short dashboard title>",
+        "intro": "<one sentence headline>",
+        "sections": [
+          {"icon": "...", "title": "...", "type": "paragraph|bullets|numbered", "items": [...]}
+        ]
+      }
     """
 
     client = get_client()
@@ -171,8 +137,10 @@ def generate_summary(question, df_text):
                 "role": "system",
                 "content": (
                     "You are a logistics data analyst. "
-                    "Analyse the data and return ONLY valid JSON matching this schema:\n\n"
+                    "Analyse the data and return ONLY valid JSON matching this schema "
+                    "(no markdown fences):\n\n"
                     "{\n"
+                    '  "chat_title": "<short dashboard-style title, max 8 words>",\n'
                     '  "intro": "<one sentence headline insight>",\n'
                     '  "sections": [\n'
                     '    {\n'
@@ -188,14 +156,12 @@ def generate_summary(question, df_text):
                     "  - A key insights section with an appropriate icon (type: bullets)\n"
                     "  - A recommended actions section with an appropriate icon (type: numbered)\n"
                     "  - An expected benefits section with an appropriate icon (type: bullets)\n"
-                    "Section titles and icons should match the context of the question. "
-                    "Do NOT wrap in markdown code fences."
+                    "Section titles and icons should match the context of the question."
                 )
             },
             {
                 "role": "user",
-                "content":
-                f"Question: {question}\n\nData:\n{df_text}"
+                "content": f"Question: {question}\n\nData:\n{df_text}"
             }
         ]
     )
