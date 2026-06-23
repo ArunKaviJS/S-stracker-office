@@ -1,9 +1,4 @@
 import json
-import logging
-import boto3
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 from openai import AzureOpenAI
 
@@ -11,27 +6,10 @@ from config import (
     AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_VERSION,
-    AZURE_OPENAI_DEPLOYMENT,
-    BEDROCK_REGION,
-    BEDROCK_MODEL_ID
+    AZURE_OPENAI_DEPLOYMENT
 )
 
 from schema_context import SCHEMA_CONTEXT
-
-_bedrock_client = None
-
-
-def get_bedrock_client():
-
-    global _bedrock_client
-
-    if _bedrock_client is None:
-        _bedrock_client = boto3.client(
-            "bedrock-runtime",
-            region_name=BEDROCK_REGION
-        )
-
-    return _bedrock_client
 
 _client = None
 
@@ -51,65 +29,35 @@ def get_client():
     return _client
 
 
-def _extract_sql(raw: str) -> str:
-    """
-    Pull the SELECT statement out of whatever Claude returned.
-    Handles: plain SQL, ```sql fences, inline commentary before/after.
-    """
-    import re
-
-    # Remove code fences
-    raw = re.sub(r"```sql", "", raw, flags=re.IGNORECASE)
-    raw = re.sub(r"```", "", raw)
-
-    # Find the first SELECT and take everything from there
-    match = re.search(r"(SELECT\b.*)", raw, re.IGNORECASE | re.DOTALL)
-    if match:
-        return match.group(1).strip()
-
-    return raw.strip()
-
-
 def generate_sql(question):
-    """Generate a MySQL query using Claude Sonnet via AWS Bedrock."""
-    logger.info("***** Generating SQL via Claude Sonnet AWS Bedrock *****")
+    """Generate a MySQL query for the given question."""
+    print('*****Generating sql******')
+    client = get_client()
 
-    bedrock = get_bedrock_client()
-
-    body = json.dumps({
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 1024,
-        "temperature": 0,
-        "system": SCHEMA_CONTEXT,
-        "messages": [
-            {
-                "role": "user",
-                "content": f"Write a MySQL query for: {question}"
-            }
+    response = client.chat.completions.create(
+        model=AZURE_OPENAI_DEPLOYMENT,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": SCHEMA_CONTEXT},
+            {"role": "user",   "content": f"Write a MySQL query for: {question}"}
         ]
-    })
-
-    response = bedrock.invoke_model(
-        modelId=BEDROCK_MODEL_ID,
-        body=body
     )
 
-    result = json.loads(response["body"].read())
+    sql = response.choices[0].message.content.strip()
 
-    raw = result["content"][0]["text"]
-
-    logger.info("Raw Claude output: %s", raw)
-
-    sql = _extract_sql(raw)
-
-    logger.info("Extracted SQL: %s", sql)
+    sql = (
+        sql
+        .replace("```sql", "")
+        .replace("```", "")
+        .strip()
+    )
 
     return sql
 
 
 def detect_intent(question):
     """Classify question into single_line, table, or summary."""
-    logger.info('******** caling detecting intent********')
+    print('******** caling detecting intent********')
     client = get_client()
 
     response = client.chat.completions.create(
@@ -143,7 +91,7 @@ def detect_intent(question):
 
 def narrate(client, deployment, question, df):
     """Single LLM call: 1-3 sentence answer for single_line intent."""
-    logger.info('**** calling single_line llm for answer****')
+    print('**** calling single_line llm for answer****')
     txt = df.to_string(index=False)
 
     response = client.chat.completions.create(
@@ -163,7 +111,7 @@ def narrate(client, deployment, question, df):
             }
         ]
     )
-    logger.info(response.choices[0].message.content.strip())
+    print(response.choices[0].message.content.strip())
     return response.choices[0].message.content.strip()
 
 
@@ -180,7 +128,7 @@ def generate_summary(question, df_text):
         ]
       }
     """
-    logger.info('******* calling summary llm *******')
+    print('******* calling summary llm *******')
     client = get_client()
 
     response = client.chat.completions.create(
