@@ -12,10 +12,7 @@ DB_NAME = os.getenv("DB_NAME")
 def lambda_handler(event, context):
     # Parse userId from body
     try:
-        body = event.get("body", {})
-        if isinstance(body, str):
-            body = json.loads(body)
-        user_id = body.get("userId")
+        user_id = event.get("userId")
     except Exception as e:
         return {
             "statusCode": 400,
