@@ -61,7 +61,15 @@ def generate_sql(question):
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 1024,
         "temperature": 0,
-        "system": SCHEMA_CONTEXT,
+        "system": (
+            "You are a SQL expert. Your ONLY job is to output a single valid MySQL SELECT query. "
+            "Rules you must follow strictly:\n"
+            "1. Output ONLY the raw SQL query — nothing else.\n"
+            "2. No explanations, no comments, no markdown, no backticks, no code fences.\n"
+            "3. Never use DROP, DELETE, INSERT, UPDATE, ALTER, TRUNCATE, or any destructive statement.\n"
+            "4. The query must start directly with SELECT.\n"
+            f"\n{SCHEMA_CONTEXT}"
+        ),
         "messages": [
             {
                 "role": "user",
