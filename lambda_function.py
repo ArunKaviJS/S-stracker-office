@@ -1,109 +1,83 @@
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+import pymysql
+from dotenv import load_dotenv
+load_dotenv()
 
-from llm import generate_sql, detect_intent, get_client
-from db import execute_query
-from router import route
-from config import AZURE_OPENAI_DEPLOYMENT
-from sql_guard import validate_sql
-from response_store import create_response_table, save_response
-
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME")
 
 def lambda_handler(event, context):
-
+    # Parse userId from body
     try:
+        body = event.get("body", {})
+        if isinstance(body, str):
+            body = json.loads(body)
+        user_id = body.get("userId")
+    except Exception as e:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Invalid request body", "details": str(e)})
+        }
 
-        body = event
+    if not user_id:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "userId is required"})
+        }
 
-        if "body" in event:
-            body = json.loads(event["body"])
-
-        question = body.get("question", "")
-        user_id  = body.get("userId", "")
-
-        create_response_table()
-
-        # LLM call 1 & 2 in parallel: SQL generation + intent detection
-        try:
-            print('Generating Query and Intent')
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                future_sql    = executor.submit(generate_sql, question)
-                future_intent = executor.submit(detect_intent, question)
-                sql    = future_sql.result()
-                intent = future_intent.result()
-
-            validate_sql(sql)
-
-        except Exception:
-            sql_error_result = {
-                "intent": "sql_error",
-                "chat_title": "I could not interpret that question",
-                "response": None
-            }
-            save_response(
-                user_id=user_id,
-                question=question,
-                sql_query=None,
-                intent=sql_error_result["intent"],
-                chat_title=sql_error_result["chat_title"],
-                response=sql_error_result["response"]
-            )
-            return {
-                "statusCode": 200,
-                "body": json.dumps(sql_error_result)
-            }
-
-        # Main flow — LLM call 3 happens inside route() only for single_line/summary
-        print('Executing Query')
-        try:
-            df = execute_query(sql)
-        except Exception:
-            sql_error_result = {
-                "intent": "sql_error",
-                "chat_title": "I could not interpret that question",
-                "response": None
-            }
-            save_response(
-                user_id=user_id,
-                question=question,
-                sql_query=sql,
-                intent=sql_error_result["intent"],
-                chat_title=sql_error_result["chat_title"],
-                response=sql_error_result["response"]
-            )
-            return {
-                "statusCode": 200,
-                "body": json.dumps(sql_error_result)
-            }
-
-        result = route(
-            question,
-            intent,
-            df,
-            get_client(),
-            AZURE_OPENAI_DEPLOYMENT
+    connection = None
+    try:
+        connection = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            cursorclass=pymysql.cursors.DictCursor,
+            connect_timeout=5
         )
 
-        save_response(
-            user_id=user_id,
-            question=question,
-            sql_query=sql,
-            intent=result["intent"],
-            chat_title=result["chat_title"],
-            response=result["response"]
-        )
+        with connection.cursor() as cursor:
+            query = """
+                SELECT ChatId, question
+                FROM tbl_chat_response
+                WHERE UserId = %s
+                ORDER BY createdAt DESC
+                LIMIT 5
+            """
+            cursor.execute(query, (user_id,))
+            rows = cursor.fetchall()
+
+        if not rows:
+            return {
+                "statusCode": 200,
+                "body": json.dumps({
+                    "userId": user_id,
+                    "count": 0,
+                    "chats": []
+                })
+            }
+
+        # Reverse to return in ascending order (oldest first)
+        rows = list(reversed(rows))
 
         return {
             "statusCode": 200,
-            "body": json.dumps(result, default=str)
-        }
-
-    except Exception as e:
-
-        return {
-            "statusCode": 500,
             "body": json.dumps({
-                "intent": "error",
-                "message": str(e)
+                "userId": user_id,
+                "count": len(rows),
+                "chats": rows
             })
         }
+
+    except pymysql.MySQLError as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Database error", "details": str(e)})
+        }
+
+    finally:
+        if connection:
+            connection.close()

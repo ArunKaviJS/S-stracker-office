@@ -26,7 +26,7 @@ pipelines:
           - zip -r code.zip . -x "*.git*" "__pycache__/*" "*.pyc"
 
           # Upload to S3
-          - aws s3 cp code.zip s3://ai-stracker-chatbucket-bibucket/code.zip
+          - aws s3 cp code.zip s3://s-tracker-ai-chatbot-latest-question-bitbucket/code.zip
 
           # Deploy to Lambda
-          - aws lambda update-function-code --function-name AI-straker-chatbot --s3-bucket ai-stracker-chatbucket-bibucket --s3-key code.zip --region ap-southeast-1
+          - aws lambda update-function-code --function-name s-tracker-ai-chatbot-latest-question --s3-bucket s-tracker-ai-chatbot-latest-question-bitbucket --s3-key code.zip --region ap-southeast-1

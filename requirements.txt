@@ -1,6 +1,2 @@
-openai
-pandas
-sqlalchemy
 pymysql
 python-dotenv
-#cryptography
