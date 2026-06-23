@@ -5,7 +5,7 @@ from llm import generate_sql, detect_intent, get_client
 from db import execute_query
 from router import route
 from config import AZURE_OPENAI_DEPLOYMENT
-from sql_guard import validate_sql, BlockedQueryError
+from sql_guard import validate_sql, check_question, BlockedQueryError
 from response_store import create_response_table, save_response
 
 
@@ -22,6 +22,28 @@ def lambda_handler(event, context):
         user_id  = body.get("userId", "")
 
         create_response_table()
+
+        # Block immediately if question contains a destructive keyword
+        try:
+            check_question(question)
+        except BlockedQueryError:
+            blocked_result = {
+                "intent": "sql_error",
+                "chat_title": "You are not authorised to perform this query",
+                "response": None
+            }
+            save_response(
+                user_id=user_id,
+                question=question,
+                sql_query=None,
+                intent=blocked_result["intent"],
+                chat_title=blocked_result["chat_title"],
+                response=blocked_result["response"]
+            )
+            return {
+                "statusCode": 200,
+                "body": json.dumps(blocked_result)
+            }
 
         # LLM call 1 & 2 in parallel: SQL generation + intent detection
         try:
