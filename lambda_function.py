@@ -107,7 +107,7 @@ def lambda_handler(event, context):
         try:
             df = execute_query(sql)
         except Exception as sql_exec_error:
-            logger.info('SQL execution error:', sql_exec_error)
+            logger.info("SQL execution error: %s", sql_exec_error)
             sql_error_result = {
                 "intent": "sql_error",
                 "chat_title": "I could not interpret that question",

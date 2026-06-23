@@ -51,9 +51,28 @@ def get_client():
     return _client
 
 
+def _extract_sql(raw: str) -> str:
+    """
+    Pull the SELECT statement out of whatever Claude returned.
+    Handles: plain SQL, ```sql fences, inline commentary before/after.
+    """
+    import re
+
+    # Remove code fences
+    raw = re.sub(r"```sql", "", raw, flags=re.IGNORECASE)
+    raw = re.sub(r"```", "", raw)
+
+    # Find the first SELECT and take everything from there
+    match = re.search(r"(SELECT\b.*)", raw, re.IGNORECASE | re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    return raw.strip()
+
+
 def generate_sql(question):
     """Generate a MySQL query using Claude Sonnet via AWS Bedrock."""
-    logger.info('***** Generating SQL via Claude Sonnet AWS Bedrock *****')
+    logger.info("***** Generating SQL via Claude Sonnet AWS Bedrock *****")
 
     bedrock = get_bedrock_client()
 
@@ -61,15 +80,7 @@ def generate_sql(question):
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 1024,
         "temperature": 0,
-        "system": (
-            "You are a SQL expert. Your ONLY job is to output a single valid MySQL SELECT query. "
-            "Rules you must follow strictly:\n"
-            "1. Output ONLY the raw SQL query — nothing else.\n"
-            "2. No explanations, no comments, no markdown, no backticks, no code fences.\n"
-            "3. Never use DROP, DELETE, INSERT, UPDATE, ALTER, TRUNCATE, or any destructive statement.\n"
-            "4. The query must start directly with SELECT.\n"
-            f"\n{SCHEMA_CONTEXT}"
-        ),
+        "system": SCHEMA_CONTEXT,
         "messages": [
             {
                 "role": "user",
@@ -85,16 +96,13 @@ def generate_sql(question):
 
     result = json.loads(response["body"].read())
 
-    sql = result["content"][0]["text"].strip()
+    raw = result["content"][0]["text"]
 
-    sql = (
-        sql
-        .replace("```sql", "")
-        .replace("```", "")
-        .strip()
-    )
+    logger.info("Raw Claude output: %s", raw)
 
-    logger.info("Generated SQL (Claude):", sql)
+    sql = _extract_sql(raw)
+
+    logger.info("Extracted SQL: %s", sql)
 
     return sql
 
