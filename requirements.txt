@@ -3,4 +3,5 @@ pandas
 sqlalchemy
 pymysql
 python-dotenv
+openpyxl
 #cryptography
