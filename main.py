@@ -123,7 +123,7 @@ def run(question, user_id):
 
 
 if __name__ == "__main__":
-    question = input("Question: show all trolleyId from tbl_trolley").strip()
+    question = input("list all the geozoneid which has more trolleys").strip()
     user_id  = input("UserId: 01 ").strip()
     result   = run(question, user_id)
     print(json.dumps(result, indent=2, default=str))
