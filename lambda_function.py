@@ -58,7 +58,9 @@ def lambda_handler(event, context):
                 sql    = future_sql.result()
                 intent = future_intent.result()
             
-            logger.info('llm detected intent:', intent)
+            
+            logger.info(f"Generated SQL: {sql}")   # ← ADD THIS
+            logger.info(f"Detected intent: {intent}")  # ← ADD THIS
             
             validate_sql(sql)
 
