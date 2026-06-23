@@ -8,7 +8,7 @@ S3_THRESHOLD = 50
 
 
 def _paginate(df):
-    """Split df into pages of PAGE_SIZE rows, returned as a dict."""
+    print("Split df into pages of PAGE_SIZE rows, returned as a dict.")
     records = df.to_dict("records")
     total_pages = math.ceil(len(records) / PAGE_SIZE)
     pages = {}
@@ -27,11 +27,12 @@ def route(question, intent, df, client, deployment):
         "response": None | dict | str
       }
     """
-
+    print('Build the response dict using the pre-detected intent ,df')
     rows, _ = df.shape
 
     # Fallback: no data returned by query
     if rows == 0:
+        print(' no data found')
         return {
             "intent": "no_data",
             "chat_title": "No data found for this query",
@@ -40,6 +41,7 @@ def route(question, intent, df, client, deployment):
 
     # --- single_line intent ---
     if intent == "single_line":
+        print('single line intent')
         answer = narrate(client, deployment, question, df)
         return {
             "intent": "single_line",
@@ -49,8 +51,11 @@ def route(question, intent, df, client, deployment):
 
     # --- summary intent ---
     if intent == "summary":
+    
         summary_data = generate_summary(question, df.to_string(index=False))
+        print('generated summary data',summary_data)
         chat_title = summary_data.pop("chat_title", question)
+        print('chat title',chat_title)
         return {
             "intent": "summary",
             "chat_title": chat_title,
@@ -61,6 +66,7 @@ def route(question, intent, df, client, deployment):
     chat_title = f"{rows} results found in your query"
 
     if rows <= PAGE_SIZE:
+        print('small table')
         return {
             "intent": "small_table",
             "chat_title": chat_title,
@@ -68,6 +74,7 @@ def route(question, intent, df, client, deployment):
         }
 
     if rows <= S3_THRESHOLD:
+        print('large table')
         return {
             "intent": "large_table",
             "chat_title": chat_title,

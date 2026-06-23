@@ -11,7 +11,7 @@ BUCKET_NAME = S3_BUCKET_NAME
 
 def upload_dataframe_to_s3(df):
     """Upload df as CSV and return a presigned URL."""
-
+    print("Upload df as CSV and return a presigned URL.")
     csv_buffer = StringIO()
 
     df.to_csv(csv_buffer, index=False)
@@ -30,13 +30,13 @@ def upload_dataframe_to_s3(df):
         Params={"Bucket": BUCKET_NAME, "Key": file_key},
         ExpiresIn=86400
     )
-
+    print('S3_URL',url)
     return url
 
 
 def upload_dataframe_to_s3_xlsx(df):
     """Upload df as XLSX and return a presigned URL."""
-
+    print('Upload df as XLSX ')
     xlsx_buffer = BytesIO()
 
     df.to_excel(xlsx_buffer, index=False, engine="openpyxl")
@@ -60,5 +60,5 @@ def upload_dataframe_to_s3_xlsx(df):
         Params={"Bucket": BUCKET_NAME, "Key": file_key},
         ExpiresIn=86400
     )
-
+    print("xlsx url",url)
     return url

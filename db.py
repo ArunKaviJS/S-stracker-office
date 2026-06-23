@@ -29,10 +29,10 @@ def get_engine():
 
 
 def execute_query(sql):
-
+    print('executing query')
     engine = get_engine()
 
     with engine.connect() as conn:
         df = pd.read_sql(text(sql), conn)
-
+    print('executed query dataframe',df)
     return df

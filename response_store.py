@@ -38,7 +38,7 @@ def save_response(
 
     response may be None, a dict/list (stored as JSON), or a plain string (S3 URL).
     """
-
+    print('saving response...')
     engine = get_engine()
 
     if response is None:
