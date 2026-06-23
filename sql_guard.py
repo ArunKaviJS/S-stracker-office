@@ -1,3 +1,7 @@
+class BlockedQueryError(Exception):
+    pass
+
+
 def validate_sql(sql):
 
     sql_upper = sql.upper()
@@ -13,11 +17,7 @@ def validate_sql(sql):
 
     for word in blocked:
         if word in sql_upper:
-            raise Exception(
-                f"Blocked SQL: {word}"
-            )
+            raise BlockedQueryError(word)
 
     if not sql_upper.startswith("SELECT"):
-        raise Exception(
-            "Only SELECT queries allowed"
-        )
+        raise BlockedQueryError("NOT_SELECT")

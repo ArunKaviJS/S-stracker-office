@@ -62,14 +62,14 @@ def route(question, intent, df, client, deployment):
 
     if rows <= PAGE_SIZE:
         return {
-            "intent": "table",
+            "intent": "small_table",
             "chat_title": chat_title,
             "response": df.to_dict("records")
         }
 
     if rows <= S3_THRESHOLD:
         return {
-            "intent": "table",
+            "intent": "large_table",
             "chat_title": chat_title,
             "response": _paginate(df)
         }
@@ -77,7 +77,7 @@ def route(question, intent, df, client, deployment):
     # >50 rows: upload as XLSX to S3
     xlsx_url = upload_dataframe_to_s3_xlsx(df)
     return {
-        "intent": "table",
+        "intent": "S3_URL",
         "chat_title": chat_title,
         "response": xlsx_url
     }
