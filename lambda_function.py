@@ -53,7 +53,7 @@ def lambda_handler(event, context):
                 future_intent = executor.submit(detect_intent, question)
                 sql    = future_sql.result()
                 intent = future_intent.result()
-            print('llm generated sql query :',sql)
+            
             print('llm detected intent:', intent)
             
             validate_sql(sql)
@@ -100,7 +100,8 @@ def lambda_handler(event, context):
         print('Executing Query')
         try:
             df = execute_query(sql)
-        except Exception:
+        except Exception as sql_exec_error:
+            print('SQL execution error:', sql_exec_error)
             sql_error_result = {
                 "intent": "sql_error",
                 "chat_title": "I could not interpret that question",

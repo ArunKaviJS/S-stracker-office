@@ -1,4 +1,5 @@
 import json
+import boto3
 
 from openai import AzureOpenAI
 
@@ -6,10 +7,27 @@ from config import (
     AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_VERSION,
-    AZURE_OPENAI_DEPLOYMENT
+    AZURE_OPENAI_DEPLOYMENT,
+    BEDROCK_REGION,
+    BEDROCK_MODEL_ID
 )
 
 from schema_context import SCHEMA_CONTEXT
+
+_bedrock_client = None
+
+
+def get_bedrock_client():
+
+    global _bedrock_client
+
+    if _bedrock_client is None:
+        _bedrock_client = boto3.client(
+            "bedrock-runtime",
+            region_name=BEDROCK_REGION
+        )
+
+    return _bedrock_client
 
 _client = None
 
@@ -30,20 +48,32 @@ def get_client():
 
 
 def generate_sql(question):
-    """Generate a MySQL query for the given question."""
-    print('*****Generating sql******')
-    client = get_client()
+    """Generate a MySQL query using Claude Sonnet via AWS Bedrock."""
+    print('***** Generating SQL via Claude Sonnet AWS Bedrock *****')
 
-    response = client.chat.completions.create(
-        model=AZURE_OPENAI_DEPLOYMENT,
-        temperature=0,
-        messages=[
-            {"role": "system", "content": SCHEMA_CONTEXT},
-            {"role": "user",   "content": f"Write a MySQL query for: {question}"}
+    bedrock = get_bedrock_client()
+
+    body = json.dumps({
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 1024,
+        "temperature": 0,
+        "system": SCHEMA_CONTEXT,
+        "messages": [
+            {
+                "role": "user",
+                "content": f"Write a MySQL query for: {question}"
+            }
         ]
+    })
+
+    response = bedrock.invoke_model(
+        modelId=BEDROCK_MODEL_ID,
+        body=body
     )
 
-    sql = response.choices[0].message.content.strip()
+    result = json.loads(response["body"].read())
+
+    sql = result["content"][0]["text"].strip()
 
     sql = (
         sql
@@ -51,6 +81,8 @@ def generate_sql(question):
         .replace("```", "")
         .strip()
     )
+
+    print("Generated SQL (Claude):", sql)
 
     return sql
 
