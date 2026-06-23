@@ -1,5 +1,9 @@
 import json
+import logging
 import boto3
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 from openai import AzureOpenAI
 
@@ -49,7 +53,7 @@ def get_client():
 
 def generate_sql(question):
     """Generate a MySQL query using Claude Sonnet via AWS Bedrock."""
-    print('***** Generating SQL via Claude Sonnet AWS Bedrock *****')
+    logger.info('***** Generating SQL via Claude Sonnet AWS Bedrock *****')
 
     bedrock = get_bedrock_client()
 
@@ -82,14 +86,14 @@ def generate_sql(question):
         .strip()
     )
 
-    print("Generated SQL (Claude):", sql)
+    logger.info("Generated SQL (Claude):", sql)
 
     return sql
 
 
 def detect_intent(question):
     """Classify question into single_line, table, or summary."""
-    print('******** caling detecting intent********')
+    logger.info('******** caling detecting intent********')
     client = get_client()
 
     response = client.chat.completions.create(
@@ -123,7 +127,7 @@ def detect_intent(question):
 
 def narrate(client, deployment, question, df):
     """Single LLM call: 1-3 sentence answer for single_line intent."""
-    print('**** calling single_line llm for answer****')
+    logger.info('**** calling single_line llm for answer****')
     txt = df.to_string(index=False)
 
     response = client.chat.completions.create(
@@ -143,7 +147,7 @@ def narrate(client, deployment, question, df):
             }
         ]
     )
-    print(response.choices[0].message.content.strip())
+    logger.info(response.choices[0].message.content.strip())
     return response.choices[0].message.content.strip()
 
 
@@ -160,7 +164,7 @@ def generate_summary(question, df_text):
         ]
       }
     """
-    print('******* calling summary llm *******')
+    logger.info('******* calling summary llm *******')
     client = get_client()
 
     response = client.chat.completions.create(
