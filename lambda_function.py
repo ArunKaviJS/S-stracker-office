@@ -29,7 +29,7 @@ def lambda_handler(event, context):
         except BlockedQueryError:
             blocked_result = {
                 "intent": "sql_error",
-                "chat_title": "You are not authorised to perform this query",
+                "chat_title": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
                 "response": None
             }
             save_response(
