@@ -121,7 +121,7 @@ def generate_summary(question, df_text):
 
     Returns a dict:
       {
-        "chat_title": "<short dashboard title>",
+        "chatTitle": "<short dashboard title>",
         "intro": "<one sentence headline>",
         "sections": [
           {"icon": "...", "title": "...", "type": "paragraph|bullets|numbered", "items": [...]}
@@ -142,7 +142,7 @@ def generate_summary(question, df_text):
                     "Analyse the data and return ONLY valid JSON matching this schema "
                     "(no markdown fences):\n\n"
                     "{\n"
-                    '  "chat_title": "<short dashboard-style title, max 8 words>",\n'
+                    '  "chatTitle": "<short dashboard-style title, max 8 words>",\n'
                     '  "intro": "<one sentence headline insight>",\n'
                     '  "sections": [\n'
                     '    {\n'

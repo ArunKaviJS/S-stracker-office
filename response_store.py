@@ -13,12 +13,12 @@ def create_response_table():
 
         conn.execute(text("""
         CREATE TABLE IF NOT EXISTS tbl_chat_response (
-            ChatId    BIGINT PRIMARY KEY AUTO_INCREMENT,
-            UserId    VARCHAR(255),
+            chatId    BIGINT PRIMARY KEY AUTO_INCREMENT,
+            userId    VARCHAR(255),
             question  TEXT,
-            sql_query LONGTEXT,
-            Intent    VARCHAR(50),
-            Chat_title TEXT,
+            sqlQuery LONGTEXT,
+            intent    VARCHAR(50),
+            chatTitle TEXT,
             response  LONGTEXT,
             createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -52,14 +52,14 @@ def save_response(
 
         conn.execute(text("""
         INSERT INTO tbl_chat_response
-            (UserId, question, sql_query, Intent, Chat_title, response)
+            (userId, question, sqlQuery, intent, chatTitle, response)
         VALUES
-            (:user_id, :question, :sql_query, :intent, :chat_title, :response)
+            (:userId, :question, :sqlQuery, :intent, :chatTitle, :response)
         """), {
-            "user_id":    user_id,
+            "userId":    user_id,
             "question":   question,
-            "sql_query":  sql_query,
+            "sqlQuery":  sql_query,
             "intent":     intent,
-            "chat_title": chat_title,
+            "chatTitle": chat_title,
             "response":   response_value
         })

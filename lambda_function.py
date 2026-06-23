@@ -1,12 +1,6 @@
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from llm import generate_sql, detect_intent, get_client
-from db import execute_query
-from router import route
-from config import AZURE_OPENAI_DEPLOYMENT
-from sql_guard import validate_sql, check_question, BlockedQueryError
-from response_store import create_response_table, save_response
+from main import run
 
 
 def lambda_handler(event, context):
@@ -21,120 +15,7 @@ def lambda_handler(event, context):
         question = body.get("question", "")
         user_id  = body.get("userId", "")
 
-        create_response_table()
-
-        # Block immediately if question contains a destructive keyword
-        try:
-            check_question(question)
-        except BlockedQueryError:
-            blocked_result = {
-                "intent": "sql_error",
-                "chat_title": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
-                "response": None
-            }
-            save_response(
-                user_id=user_id,
-                question=question,
-                sql_query=None,
-                intent=blocked_result["intent"],
-                chat_title=blocked_result["chat_title"],
-                response=blocked_result["response"]
-            )
-            return {
-                "statusCode": 200,
-                "body": json.dumps(blocked_result)
-            }
-
-        # LLM call 1 & 2 in parallel: SQL generation + intent detection
-        try:
-            print('Generating Query and Intent')
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                future_sql    = executor.submit(generate_sql, question)
-                future_intent = executor.submit(detect_intent, question)
-                sql    = future_sql.result()
-                intent = future_intent.result()
-            print('llm generated sql query :',sql)
-            print('llm detected intent:', intent)
-            
-            validate_sql(sql)
-
-        except BlockedQueryError:
-            blocked_result = {
-                "intent": "sql_error",
-                "chat_title": "You are not authorised to perform this query",
-                "response": None
-            }
-            save_response(
-                user_id=user_id,
-                question=question,
-                sql_query=sql,
-                intent=blocked_result["intent"],
-                chat_title=blocked_result["chat_title"],
-                response=blocked_result["response"]
-            )
-            return {
-                "statusCode": 200,
-                "body": json.dumps(blocked_result)
-            }
-
-        except Exception:
-            sql_error_result = {
-                "intent": "sql_error",
-                "chat_title": "I could not interpret that question",
-                "response": None
-            }
-            save_response(
-                user_id=user_id,
-                question=question,
-                sql_query=None,
-                intent=sql_error_result["intent"],
-                chat_title=sql_error_result["chat_title"],
-                response=sql_error_result["response"]
-            )
-            return {
-                "statusCode": 200,
-                "body": json.dumps(sql_error_result)
-            }
-
-        # Main flow — LLM call 3 happens inside route() only for single_line/summary
-        print('Executing Query')
-        try:
-            df = execute_query(sql)
-        except Exception:
-            sql_error_result = {
-                "intent": "sql_error",
-                "chat_title": "I could not interpret that question",
-                "response": None
-            }
-            save_response(
-                user_id=user_id,
-                question=question,
-                sql_query=sql,
-                intent=sql_error_result["intent"],
-                chat_title=sql_error_result["chat_title"],
-                response=sql_error_result["response"]
-            )
-            return {
-                "statusCode": 200,
-                "body": json.dumps(sql_error_result)
-            }
-
-        result = route(
-            question,
-            intent,
-            df,
-            get_client(),
-            AZURE_OPENAI_DEPLOYMENT
-        )
-
-        save_response(
-            user_id=user_id,
-            question=question,
-            sql_query=sql,
-            intent=result["intent"],
-            chat_title=result["chat_title"],
-            response=result["response"]
-        )
+        result = run(question, user_id)
 
         return {
             "statusCode": 200,

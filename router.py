@@ -23,7 +23,7 @@ def route(question, intent, df, client, deployment):
     Build the response dict using the pre-detected intent:
       {
         "intent": str,
-        "chat_title": str,
+        "chatTitle": str,
         "response": None | dict | str
       }
     """
@@ -35,7 +35,7 @@ def route(question, intent, df, client, deployment):
         print(' no data found')
         return {
             "intent": "no_data",
-            "chat_title": "No data found for this query",
+            "chatTitle": "No data found for this query",
             "response": None
         }
 
@@ -45,7 +45,7 @@ def route(question, intent, df, client, deployment):
         answer = narrate(client, deployment, question, df)
         return {
             "intent": "single_line",
-            "chat_title": answer,
+            "chatTitle": answer,
             "response": None
         }
 
@@ -54,11 +54,11 @@ def route(question, intent, df, client, deployment):
     
         summary_data = generate_summary(question, df.to_string(index=False))
         print('generated summary data',summary_data)
-        chat_title = summary_data.pop("chat_title", question)
+        chat_title = summary_data.pop("chatTitle", question)
         print('chat title',chat_title)
         return {
             "intent": "summary",
-            "chat_title": chat_title,
+            "chatTitle": chat_title,
             "response": summary_data
         }
 
@@ -69,7 +69,7 @@ def route(question, intent, df, client, deployment):
         print('small table')
         return {
             "intent": "small_table",
-            "chat_title": chat_title,
+            "chatTitle": chat_title,
             "response": df.to_dict("records")
         }
 
@@ -77,7 +77,7 @@ def route(question, intent, df, client, deployment):
         print('large table')
         return {
             "intent": "large_table",
-            "chat_title": chat_title,
+            "chatTitle": chat_title,
             "response": _paginate(df)
         }
 
@@ -85,6 +85,6 @@ def route(question, intent, df, client, deployment):
     xlsx_url = upload_dataframe_to_s3_xlsx(df)
     return {
         "intent": "S3_URL",
-        "chat_title": chat_title,
+        "chatTitle": chat_title,
         "response": xlsx_url
     }
