@@ -20,6 +20,7 @@ CRITICAL RULES — NEVER VIOLATE
 10. For LAG/LEAD window functions use: LAG(col) OVER (PARTITION BY x ORDER BY y).
 11. NEVER use DELETE, UPDATE, DROP, ALTER, INSERT, TRUNCATE.
 12. Output must start with SELECT.
+13. Before writing ANY column in SELECT/WHERE/GROUP BY/ORDER BY: scan the schema above and confirm that column is listed under the exact table you are querying. If it is not listed there, find which table does list it and JOIN to that table instead. NEVER assume a column belongs to a table — verify first.
 
 =======================================================================
 TABLES & EXACT COLUMNS
