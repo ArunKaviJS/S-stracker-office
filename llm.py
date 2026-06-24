@@ -1,4 +1,5 @@
 import json
+import boto3
 
 from openai import AzureOpenAI
 
@@ -6,11 +7,11 @@ from config import (
     AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT,
     AZURE_OPENAI_API_VERSION,
-    AZURE_OPENAI_DEPLOYMENT
+    AZURE_OPENAI_DEPLOYMENT,
+    BEDROCK_MODEL_ID
 )
 
 from schema_context import SCHEMA_CONTEXT
-from sql_validator import is_complete_sql      # <-- new import
 
 
 _client = None
@@ -31,46 +32,56 @@ def get_client():
     return _client
 
 
-
-def _call_llm_for_sql(client, question):
-    """Single LLM call that returns a stripped SQL string."""
-    response = client.chat.completions.create(
-        model=AZURE_OPENAI_DEPLOYMENT,
-        temperature=0,
-        messages=[
-            {"role": "system", "content": SCHEMA_CONTEXT},
-            {"role": "user",   "content": f"Write a MySQL query for: {question}"}
-        ]
+def get_bedrock_client():
+    return boto3.client(
+        service_name="bedrock-runtime"
     )
-    sql = response.choices[0].message.content.strip()
-    sql = sql.replace("```sql", "").replace("```", "").strip()
+
+
+def _call_llm_for_sql(question):
+    """Generate SQL using Claude Sonnet on AWS Bedrock."""
+
+    bedrock = get_bedrock_client()
+
+    body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 1024,
+        "temperature": 0,
+        "system": SCHEMA_CONTEXT,
+        "messages": [
+            {
+                "role": "user",
+                "content": f"Write a MySQL query for: {question}"
+            }
+        ]
+    }
+
+    response = bedrock.invoke_model(
+        modelId=BEDROCK_MODEL_ID,
+        body=json.dumps(body)
+    )
+
+    result = json.loads(
+        response["body"].read().decode("utf-8")
+    )
+
+    sql = result["content"][0]["text"].strip()
+
+    sql = (
+        sql.replace("```sql", "")
+           .replace("```", "")
+           .strip()
+    )
+
     return sql
 
-def generate_sql(question, max_retries=3):
-    """
-    Generate a MySQL query for the given question.
- 
-    After each LLM call the SQL is validated with is_complete_sql().
-    If incomplete, generate_sql is retried up to max_retries times.
-    Raises RuntimeError if still incomplete after all attempts.
-    """
-    print('***** Generating SQL *****')
-    client = get_client()
- 
-    for attempt in range(1, max_retries + 1):
-        sql = _call_llm_for_sql(client, question)
-        print(f'[generate_sql] Attempt {attempt} SQL: {sql}')
- 
-        if is_complete_sql(sql):
-            print('[generate_sql] SQL validated OK.')
-            return sql
- 
-        print(f'[generate_sql] SQL incomplete on attempt {attempt}, retrying …')
- 
-    raise RuntimeError(
-        f"generate_sql failed to produce a complete SQL after {max_retries} attempts.\n"
-        f"Last SQL: {sql}"
-    )
+
+def generate_sql(question):
+    """Generate a MySQL query via Claude Sonnet on AWS Bedrock."""
+    print('***** Generating SQL via Claude Bedrock *****')
+    sql = _call_llm_for_sql(question)
+    print(f'[generate_sql] SQL: {sql}')
+    return sql
 
 
 def detect_intent(question):
