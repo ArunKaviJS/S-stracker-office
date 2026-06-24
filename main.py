@@ -13,23 +13,23 @@ def run(question, user_id):
     create_response_table()
 
     # Block immediately if question contains a destructive keyword
-    try:
-        check_question(question)
-    except BlockedQueryError:
-        blocked_result = {
-            "intent": "sql_error",
-            "chatTitle": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
-            "response": None
-        }
-        save_response(
-            user_id=user_id,
-            question=question,
-            sql_query=None,
-            intent=blocked_result["intent"],
-            chat_title=blocked_result["chatTitle"],
-            response=blocked_result["response"]
-        )
-        return blocked_result
+    # try:
+    #     check_question(question)
+    # except BlockedQueryError:
+    #     blocked_result = {
+    #         "intent": "sql_error",
+    #         "chatTitle": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
+    #         "response": None
+    #     }
+    #     save_response(
+    #         user_id=user_id,
+    #         question=question,
+    #         sql_query=None,
+    #         intent=blocked_result["intent"],
+    #         chat_title=blocked_result["chatTitle"],
+    #         response=blocked_result["response"]
+    #     )
+    #     return blocked_result
 
     # LLM call 1 & 2 in parallel: SQL generation + intent detection
     sql = None
@@ -52,7 +52,7 @@ def run(question, user_id):
         traceback.print_exc()
         blocked_result = {
             "intent": "sql_error",
-            "chatTitle": "You are not authorised to perform this query",
+            "chatTitle": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
             "response": None
         }
         save_response(
@@ -123,7 +123,7 @@ def run(question, user_id):
 
 
 if __name__ == "__main__":
-    question = input("list all the geozoneid which has more trolleys").strip()
+    question = input("delete the Table tbl_chat_response").strip()
     user_id  = input("UserId: 01 ").strip()
     result   = run(question, user_id)
     print(json.dumps(result, indent=2, default=str))

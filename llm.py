@@ -46,7 +46,7 @@ def _call_llm_for_sql(client, question):
     sql = sql.replace("```sql", "").replace("```", "").strip()
     return sql
 
-def generate_sql(question, max_retries=2):
+def generate_sql(question, max_retries=3):
     """
     Generate a MySQL query for the given question.
  
@@ -160,7 +160,7 @@ def generate_summary(question, df_text):
                     "Analyse the data and return ONLY valid JSON matching this schema "
                     "(no markdown fences):\n\n"
                     "{\n"
-                    '  "chatTitle": "<short dashboard-style title, max 8 words>",\n'
+                    ' "chatTitle": "<concise conversational title summarizing the analysis in 8-15 words, suitable for display in 1-2 UI lines>",\n'
                     '  "intro": "<one sentence headline insight>",\n'
                     '  "sections": [\n'
                     '    {\n'
@@ -171,12 +171,16 @@ def generate_summary(question, df_text):
                     "    }\n"
                     "  ]\n"
                     "}\n\n"
-                    "Always include:\n"
-                    "  - A 📖 Details section (type: paragraph, single item)\n"
-                    "  - A key insights section with an appropriate icon (type: bullets)\n"
-                    "  - A recommended actions section with an appropriate icon (type: numbered)\n"
-                    "  - An expected benefits section with an appropriate icon (type: bullets)\n"
-                    "Section titles and icons should match the context of the question."
+                    "Requirements:\n"
+                    "- Generate section titles dynamically based on the content and business context.\n"
+                    "- Do NOT use fixed titles such as 'Details', 'Key Insights', "
+                    "'Recommended Actions', or 'Expected Benefits' unless they are naturally appropriate.\n"
+                    "- Include exactly one descriptive summary section (type: paragraph).\n"
+                    "- Include at least one insights/findings section (type: bullets).\n"
+                    "- Include one action-oriented section (type: numbered).\n"
+                    "- Include one impact/benefits/outcomes section (type: bullets).\n"
+                    "- Choose relevant emojis and section titles that match the question and analysis.\n"
+                    "- Keep titles concise, dashboard-style, and business-friendly.\n"
                 )
             },
             {
