@@ -26,12 +26,7 @@ def run(question, user_id):
         validate_sql(sql, user_id=user_id, question=question)
 
     except BlockedQueryError as e:
-        import traceback
-
-        print("ERROR INSIDE SQL GENERATION")
-        print(e)
-
-        traceback.print_exc()
+        print("Blocked query detected:", e)
         blocked_result = {
             "intent": "sql_error",
             "chatTitle": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
