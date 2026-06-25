@@ -21,7 +21,6 @@ RULES:
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
 * Output must start with SELECT.
 * Before output:
-
   1. Identify required tables.
   2. Verify every column exists.
   3. Verify joins exist in RELATIONSHIPS.
@@ -31,65 +30,64 @@ RULES:
 TABLES
 
 tbl_battery(
-batteryId PK,
-serialNo,
-warrantyStartDate,
-warrantyExpiryDate,
-warrantyDuration,
-createdOn,
-modifiedOn,
-status
+  batteryId        INT(11) PK,
+  serialNo         VARCHAR(100),
+  warrantyStartDate DATETIME,
+  warrantyExpiryDate DATETIME,
+  warrantyDuration ENUM('12 months','18 months','24 months'),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1')
 )
 
 tbl_device(
-deviceId PK,
-deviceEndpoint,
-firmwareVersion,
-mode,
-registrationId,
-registrationDate,
-fenceId,
-isOutOfFence,
-warrantyStartDate,
-warrantyExpiryDate,
-warrantyDuration,
-lastUpdated,
-status,
-lastAddress
+  deviceId         INT(11) PK,
+  deviceEndpoint   VARCHAR(100),
+  firmwareVersion  VARCHAR(100),
+  mode             ENUM('sleep','awake','idle'),
+  registrationId   VARCHAR(255),
+  registrationDate DATETIME,
+  fenceId          INT(11),
+  isOutOfFence     TINYINT(4),
+  warrantyStartDate DATETIME,
+  warrantyExpiryDate DATETIME,
+  warrantyDuration ENUM('12 months','18 months','24 months'),
+  lastUpdated      DATETIME,
+  status           ENUM('registered','deregistered'),
+  lastAddress      VARCHAR(255)
 )
 
 tbl_device_claim_history(
-deviceClaimId PK,
-deviceId,
-warrentyType,
-doneBy,
-claimNotes,
-resolveNotes,
-resolvedDate,
-createdOn,
-status
+  deviceClaimId    INT(11) PK,
+  deviceId         INT(11),
+  warrentyType     VARCHAR(100),
+  doneBy           INT(11),
+  claimNotes       VARCHAR(500),
+  resolveNotes     VARCHAR(500),
+  resolvedDate     DATETIME,
+  createdOn        DATETIME,
+  status           ENUM('0','1','2')
 )
 
 tbl_device_data(
-deviceDataId PK,
-trolleyId,
-deviceEndpoint,
-firmwareVersion,
-momentDetection,
-timestamp,
-status,
-intervalTimeset,
-GPSLatitude,
-GPSLongitude,
-address,
-locationSource,
-OtaTrigger,
-batteryLevel,
-batteryFault
+  deviceDataId     INT(11) PK,
+  trolleyId        INT(255),
+  deviceEndpoint   VARCHAR(100),
+  firmwareVersion  VARCHAR(100),
+  momentDetection  VARCHAR(100),
+  timestamp        DATETIME,
+  status           ENUM('0','1'),
+  intervalTimeset  INT(11),
+  GPSLatitude      DOUBLE,
+  GPSLongitude     DOUBLE,
+  address          VARCHAR(255),
+  locationSource   VARCHAR(255),
+  OtaTrigger       TINYINT(4),
+  batteryLevel     INT(11),
+  batteryFault     VARCHAR(255)
 )
 
 BATTERY_DRAIN_LOGIC:
-
 * status=1
 * sort trolleyId,timestamp ASC
 * LAG(batteryLevel) OVER(PARTITION BY trolleyId ORDER BY timestamp)
@@ -98,144 +96,143 @@ BATTERY_DRAIN_LOGIC:
 * drain=session_start_battery-session_end_battery
 
 tbl_device_history(
-historyId PK,
-deviceEndpoint,
-latitude,
-longitude,
-trolleyId,
-geozoneId,
-geolayerId,
-createdOn,
-modifiedOn,
-status,
-nestId,
-locationSource,
-address
+  historyId        INT(11) PK,
+  deviceEndpoint   VARCHAR(255),
+  latitude         DOUBLE,
+  longitude        DOUBLE,
+  trolleyId        INT(11),
+  geozoneId        INT(11),
+  geolayerId       INT(11),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1'),
+  nestId           INT(11),
+  locationSource   VARCHAR(255),
+  address          VARCHAR(255)
 )
 
 IDLE_TROLLEY_LOGIC:
-
 * status=1
 * ignore NULL trolleyId/geozoneId/createdOn
 * LAG(geozoneId) OVER(PARTITION BY trolleyId ORDER BY createdOn)
 * consecutive same-zone records form streak
 * idle_hours=MAX(createdOn)-MIN(createdOn)
-* > =24 Critical
-* > =6 Severe
-* > =2 Idle
+* >=24 Critical
+* >=6 Severe
+* >=2 Idle
 * filter idle_hours>=2
 
 tbl_geolayers(
-geolayerId PK,
-geolayerName,
-buildingName,
-floorNo,
-createdOn,
-modifiedOn,
-status,
-boundaryColor
+  geolayerId       INT(11) PK,
+  geolayerName     VARCHAR(100),
+  buildingName     VARCHAR(100),
+  floorNo          VARCHAR(100),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1'),
+  boundaryColor    VARCHAR(50)
 )
 
 tbl_geozones(
-geozoneId PK,
-geozoneName,
-tag,
-tagId,
-geolayerId,
-boundaryColor,
-createdOn,
-modifiedOn,
-status,
-type,
-noOfTrolleys
+  geozoneId        INT(11) PK,
+  geozoneName      VARCHAR(100),
+  tag              VARCHAR(100),
+  tagId            INT(11),
+  geolayerId       INT(11),
+  boundaryColor    VARCHAR(50),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1'),
+  type             ENUM('general','cleaning','maintenance'),
+  noOfTrolleys     INT(11)
 )
 
 tbl_nest(
-nestId PK,
-nestName,
-geozoneId,
-geolayerId,
-minTrolleyLimit,
-boundaryColor,
-createdOn,
-modifiedOn,
-status,
-availableTrolly
+  nestId           INT(11) PK,
+  nestName         VARCHAR(100),
+  geozoneId        INT(11),
+  geolayerId       INT(11),
+  minTrolleyLimit  INT(11),
+  boundaryColor    VARCHAR(50),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1','2'),
+  availableTrolly  INT(11)
 )
 
 tbl_trolley(
-trolleyId PK,
-trolleyName,
-serialNo,
-deviceId,
-createdOn,
-modifiedOn,
-status,
-type,
-maintenanceStatus,
-lastCleaned,
-latestHistoryId,
-latestLatitude,
-latestLongitude,
-latestGeozoneId,
-latestGeolayerId,
-latestNestId,
-latestLocationSource,
-latestAddress,
-latestHistoryTime,
-latestDeviceDataId,
-latestBatteryLevel,
-latestDataTimestamp,
-latestIntervalTimeset
+  trolleyId            INT(11) PK,
+  trolleyName          VARCHAR(100),
+  serialNo             VARCHAR(100),
+  deviceId             INT(11),
+  createdOn            DATETIME,
+  modifiedOn           DATETIME,
+  status               ENUM('0','1'),
+  type                 ENUM('landside','airside'),
+  maintenanceStatus    ENUM('major','minor','no maintenance'),
+  lastCleaned          DATETIME,
+  latestHistoryId      INT(11),
+  latestLatitude       DOUBLE,
+  latestLongitude      DOUBLE,
+  latestGeozoneId      INT(11),
+  latestGeolayerId     INT(11),
+  latestNestId         INT(11),
+  latestLocationSource VARCHAR(255),
+  latestAddress        TEXT,
+  latestHistoryTime    DATETIME,
+  latestDeviceDataId   INT(11),
+  latestBatteryLevel   INT(11),
+  latestDataTimestamp  DATETIME,
+  latestIntervalTimeset INT(11)
 )
 
 tbl_trolley_maintenance(
-maintenanceId PK,
-type,
-reason,
-completedNotes,
-doneBy,
-image1,
-image2,
-createdOn,
-modifiedOn,
-status,
-trolleyId
+  maintenanceId    INT(11) PK,
+  type             ENUM('major','minor'),
+  reason           VARCHAR(500),
+  completedNotes   VARCHAR(500),
+  doneBy           INT(11),
+  image1           VARCHAR(500),
+  image2           VARCHAR(500),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1','2'),
+  trolleyId        INT(11)
 )
 
 tbl_alerts(
-alertId PK,
-alertName,
-key,
-trolleyId,
-createdOn,
-modifiedOn,
-status,
-recentGeozoneId,
-assigneeId
+  alertId          INT(11) PK,
+  alertName        VARCHAR(100),
+  key              VARCHAR(100),
+  trolleyId        INT(11),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1','2'),
+  recentGeozoneId  INT(11),
+  assigneeId       INT(11)
 )
 
 tbl_alerts_history(
-historyId PK,
-alertId,
-title,
-notes,
-doneBy,
-createdOn,
-status,
-id,
-type
+  historyId        INT(11) PK,
+  alertId          INT(11),
+  title            VARCHAR(100),
+  notes            VARCHAR(500),
+  doneBy           INT(11),
+  createdOn        DATETIME,
+  status           ENUM('0','1'),
+  id               INT(11),
+  type             VARCHAR(50)
 )
 
 tbl_duty_roaster(
-rosterId PK,
-shift,
-totalPushers,
-totalWorkers,
-createdOn,
-modifiedOn,
-status,
-shiftDate
+  rosterId         INT PK,
+  shift            ...,
+  totalPushers     ...,
+  totalWorkers     ...,
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ...,
+  shiftDate        DATE/DATETIME
 )
 
 RELATIONSHIPS
