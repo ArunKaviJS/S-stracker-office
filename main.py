@@ -12,24 +12,6 @@ def run(question, user_id):
 
     create_response_table()
 
-    # Block immediately if question contains a destructive keyword
-    # try:
-    #     check_question(question)
-    # except BlockedQueryError:
-    #     blocked_result = {
-    #         "intent": "sql_error",
-    #         "chatTitle": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
-    #         "response": None
-    #     }
-    #     save_response(
-    #         user_id=user_id,
-    #         question=question,
-    #         sql_query=None,
-    #         intent=blocked_result["intent"],
-    #         chat_title=blocked_result["chatTitle"],
-    #         response=blocked_result["response"]
-    #     )
-    #     return blocked_result
 
     # LLM call 1 & 2 in parallel: SQL generation + intent detection
     sql = None
@@ -41,9 +23,9 @@ def run(question, user_id):
         print('llm generated sql query :', sql)
         print('llm detected intent:', intent)
 
-        validate_sql(sql)
+        validate_sql(sql, user_id=user_id, question=question)
 
-    except BlockedQueryError:
+    except BlockedQueryError as e:
         import traceback
 
         print("ERROR INSIDE SQL GENERATION")
@@ -55,31 +37,8 @@ def run(question, user_id):
             "chatTitle": "I have no permission to execute database operations that modify data or schema, including DROP, DELETE, ALTER, TRUNCATE, INSERT, and UPDATE.",
             "response": None
         }
-        save_response(
-            user_id=user_id,
-            question=question,
-            sql_query=sql,
-            intent=blocked_result["intent"],
-            chat_title=blocked_result["chatTitle"],
-            response=blocked_result["response"]
-        )
         return blocked_result
 
-    # except Exception:
-    #     sql_error_result = {
-    #         "intent": "sql_error",
-    #         "chatTitle": "I could not interpret that question",
-    #         "response": None
-    #     }
-    #     save_response(
-    #         user_id=user_id,
-    #         question=question,
-    #         sql_query=None,
-    #         intent=sql_error_result["intent"],
-    #         chat_title=sql_error_result["chatTitle"],
-    #         response=sql_error_result["response"]
-    #     )
-    #     return sql_error_result
 
     # Main flow
     print('Executing Query')
