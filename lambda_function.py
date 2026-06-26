@@ -7,8 +7,7 @@ from predictor import generate_prediction_dataframe
 from db import (
     get_geozones,
     save_forecasts,
-    get_latest_forecast_date,
-    delete_expired_forecasts
+    get_latest_forecast_date
 )
 
 
@@ -144,7 +143,6 @@ def lambda_handler(event, context):
     # Store fresh forecasts
     save_forecasts(save_df)
 
-    delete_expired_forecasts()
     
     #delete expired date from db
     return {

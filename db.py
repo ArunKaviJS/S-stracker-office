@@ -49,13 +49,3 @@ def get_latest_forecast_date():
     return result.iloc[0]["max_date"]
 
 
-def delete_expired_forecasts():
-
-    query = """
-    DELETE
-    FROM tbl_trolley_forecast
-    WHERE forecast_date < CURDATE()
-    """
-
-    with engine.begin() as conn:
-        conn.execute(text(query))
