@@ -25,7 +25,7 @@ def load_latest_maintenance():
         tt.serialNo,
         tm.reason,
         tm.createdOn
-    FROM tbl_trolley_maintenance tm
+    FROM tbl_trolley_maintenance_synthetic_2_0 tm
     INNER JOIN tbl_trolley tt
         ON tm.trolleyId = tt.trolleyId
     WHERE tm.status = 2
