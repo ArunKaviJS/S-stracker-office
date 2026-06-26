@@ -3,12 +3,32 @@ import numpy as np
 
 from reason_mapper import map_reason
 
+MAJOR_REASONS = {
+    "Accident",
+    "Broken & Needs Welding",
+    "Frame Damage",
+    "Motor Failure",
+    "Structural Damage"
+}
+
+
 def build_predictions(
     df,
     model,
     type_encoder,
     reason_encoder
 ):
+
+    # Step 1: Map reason and derive type on ALL records first
+    df = df.copy()
+
+    df["reason"] = df["reason"].apply(map_reason)
+
+    df.loc[df["reason"].isin(MAJOR_REASONS), "type"] = "Major"
+    df.loc[~df["reason"].isin(MAJOR_REASONS), "type"] = "Minor"
+
+    # Step 2: Get last maintenance per trolley per reason
+    df["createdOn"] = pd.to_datetime(df["createdOn"])
 
     latest = (
         df.sort_values("createdOn")
@@ -17,51 +37,27 @@ def build_predictions(
                 "trolleyId",
                 "trolleyName",
                 "serialNo",
-                "reason"
+                "reason",
+                "type"
             ],
             as_index=False
         )
         .last()
     )
 
-    latest["reason"] = latest["reason"].apply(
-        map_reason
-    )
+    print(f"Trolley-Reason breakdown:\n{latest.groupby(['trolleyName', 'reason']).size().to_string()}")
+    print(f"Total trolley-reason combinations : {len(latest)}")
 
-    MAJOR_REASONS = {
-        "Accident",
-        "Broken & Needs Welding",
-        "Frame Damage",
-        "Motor Failure",
-        "Structural Damage"
-    }
-
-    latest.loc[
-        latest["reason"].isin(MAJOR_REASONS),
-        "type"
-    ] = "Major"
-
-    latest.loc[
-        ~latest["reason"].isin(MAJOR_REASONS),
-        "type"
-    ] = "Minor"
-
-    latest["createdOn"] = pd.to_datetime(
-        latest["createdOn"]
-    )
-
+    # Step 3: Date features
     latest["day"] = latest["createdOn"].dt.day
     latest["month"] = latest["createdOn"].dt.month
     latest["day_of_week"] = latest["createdOn"].dt.dayofweek
 
-    latest["type"] = type_encoder.transform(
-        latest["type"]
-    )
+    # Step 4: Encode
+    latest["type"] = type_encoder.transform(latest["type"])
+    latest["reason"] = reason_encoder.transform(latest["reason"])
 
-    latest["reason"] = reason_encoder.transform(
-        latest["reason"]
-    )
-
+    # Step 5: Predict
     X = latest[
         [
             "trolleyId",
@@ -74,11 +70,9 @@ def build_predictions(
     ]
 
     preds = model.predict(X)
-
     preds = np.round(preds).astype(int)
 
     latest["untilnextday"] = preds
-
     latest["nextmaintenancedate"] = (
         latest["createdOn"] +
         pd.to_timedelta(preds, unit="D")
@@ -87,24 +81,3 @@ def build_predictions(
     return latest
 
 
-def filter_predictions(
-    pred_df,
-    start_date,
-    end_date
-):
-
-    start_date = pd.to_datetime(start_date)
-
-    end_date = pd.to_datetime(end_date)
-
-    return pred_df[
-        (
-            pred_df["nextmaintenancedate"]
-            >= start_date
-        )
-        &
-        (
-            pred_df["nextmaintenancedate"]
-            <= end_date
-        )
-    ]

@@ -3,8 +3,7 @@ import pandas as pd
 
 from db import (
     load_latest_maintenance,
-    save_predictions,
-    get_prediction_window,
+    save_predictions
 )
 
 from predictor import (

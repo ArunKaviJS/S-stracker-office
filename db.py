@@ -23,12 +23,12 @@ def load_latest_maintenance():
         tm.trolleyId,
         tt.trolleyName,
         tt.serialNo,
-        tm.type,
         tm.reason,
         tm.createdOn
-    FROM tbl_trolley_maintenance_synthetic_2_0 tm
+    FROM tbl_trolley_maintenance tm
     INNER JOIN tbl_trolley tt
         ON tm.trolleyId = tt.trolleyId
+    WHERE tm.status = 2
     """
 
     return pd.read_sql(query, get_engine())
