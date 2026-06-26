@@ -25,10 +25,7 @@ def get_geozones():
 
     return pd.read_sql(query, engine)
 
-def truncate_forecast_table():
 
-    with engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE tbl_trolley_forecast"))
 
 def save_forecasts(df):
 

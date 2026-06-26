@@ -1,5 +1,6 @@
 import json
 import joblib
+import os
 import boto3
 import pandas as pd
 from predictor import generate_prediction_dataframe
@@ -14,13 +15,15 @@ from db import (
 
 MODEL_PATH = "/tmp/model.pkl"
 
+BUCKET_NAME=os.environ['BUCKET_NAME']
+
 s3 = boto3.client("s3")
 
 
 def load_model():
 
     s3.download_file(
-        "demand-forecast-model-bucket",
+        BUCKET_NAME,
         "rf_trolley_model.pkl",
         MODEL_PATH
     )
@@ -135,78 +138,7 @@ def lambda_handler(event, context):
     save_df["timestamp"] = pd.to_datetime(save_df["timestamp"])
     save_df["createdOn"] = pd.to_datetime(save_df["createdOn"])
     
-    #======================temporory for UI=======================
-    # --------------------------------------------------
-    # Geozone ID Mapping
-    # 1 -> 47, 2 -> 48, ..., 24 -> 70
-    # --------------------------------------------------
-
-    GEOZONE_ID_MAPPING = {
-        1: 47,
-        2: 48,
-        3: 49,
-        4: 50,
-        5: 51,
-        6: 52,
-        7: 53,
-        8: 54,
-        9: 55,
-        10: 56,
-        11: 57,
-        12: 58,
-        13: 59,
-        14: 60,
-        15: 61,
-        16: 62,
-        17: 63,
-        18: 64,
-        19: 65,
-        20: 66,
-        21: 67,
-        22: 68,
-        23: 69,
-        24: 70,
-    }
-
-
-    save_df["geozoneId"] = save_df["geozoneId"].map(GEOZONE_ID_MAPPING)
-    
-    
-    # --------------------------------------------------
-    # Geozone Name Mapping
-    # Based on the order shown in the image
-    # --------------------------------------------------
-
-    GEOZONE_NAME_MAPPING = {
-        "MTB LEVEL 2": "Dummy Geozone",
-        "STCP BLOCK A LEVEL 5": "MTB Level 5",
-        "STCP BLOCK B LEVEL 5": "Ap Geozones",
-        "STCP BLOCK A LEVEL 4": "Postgraduate Lounge",
-        "STCP BLOCK B LEVEL 4": "Japanese Language Centre",
-        "STCP BLOCK A LEVEL 3": "Mizan Research Centre",
-        "STCP BLOCK B LEVEL 3": "Third Floor Lift",
-        "STCP BLOCK A LEVEL 2": "Restroom",
-        "STCP BLOCK B LEVEL 2": "LATLONG 1",
-        "STCP BLOCK A LEVEL 1": "LATLONG2",
-        "STCP BLOCK B LEVEL 1": "LATLONG3",
-        "STCP BLOCK A LEVEL G": "LATLONG4",
-        "STCP BLOCK B LEVEL G": "LATLONG5",
-        "STCP BLOCK A LEVEL B": "LATLONG6",
-        "STCP BLOCK B LEVEL B": "LATLONG7",
-        "MTB LEVEL 3": "ARJUN-GEOZONE-1",
-        "MTB LEVEL 3 MAINTENANCE 1": "ARJUN-GEOZONE-2",
-        "MTB LEVEL 5": "ARJUN-GEOZONE-3",
-        "MTB LEVEL 5 CLEANING": "ARJUN-GEOZONE-4",
-        "Firmware Zone MTB Level 2": "ARJUN-GEOZONE-5",
-        "Firmware Zone": "ARJUN-GEOZONE-6",
-        "Lobby Zone": "ARJUN-GEOZONE-7",
-        "STCP BLOCK A": "ARJUN-GEOZONE-8",
-        "MTB LEVEL 3 MAINTENANCE 2": "ARJUN-GEOZONE-9",
-    }
-
-
-    save_df["geozoneName"] = save_df["geozoneName"].replace(GEOZONE_NAME_MAPPING)
-    
+ 
     #======================temporory for UI=======================
     
     # Store fresh forecasts
