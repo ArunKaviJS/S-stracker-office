@@ -110,18 +110,22 @@ def table_exists(conn, table):
         return cur.fetchone()["cnt"] > 0
 
 
-#=============create table likely in main db if not exist======
+#=============create table from main db DDL if not exist======
 def create_table_like(main_conn, ai_conn, table):
 
-    main_db = os.environ["DB_DATABASE"]
-    ai_db = os.environ["AI_DB_DATABASE"]
+    # Fetch DDL from main DB (works across different servers)
+    with main_conn.cursor() as cur:
+        cur.execute(f"SHOW CREATE TABLE `{table}`")
+        row = cur.fetchone()
+        create_sql = row["Create Table"]
+
+    # Replace any USE db prefix in the DDL and ensure IF NOT EXISTS
+    create_sql = create_sql.replace(
+        "CREATE TABLE", "CREATE TABLE IF NOT EXISTS", 1
+    )
 
     with ai_conn.cursor() as cur:
-
-        cur.execute(f"""
-            CREATE TABLE {ai_db}.{table}
-            LIKE {main_db}.{table}
-        """)
+        cur.execute(create_sql)
 
     ai_conn.commit()
 
