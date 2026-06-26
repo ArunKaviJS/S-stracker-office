@@ -1,8 +1,9 @@
 import boto3
 import joblib
 import io
+import os
 
-BUCKET_NAME = "ai-stracker-predictive-maintanence"
+BUCKET_NAME = os.environ['BUCKET_NAME']
 
 s3 = boto3.client("s3")
 

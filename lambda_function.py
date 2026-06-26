@@ -38,14 +38,6 @@ def lambda_handler(event, context):
         print("PREDICTIVE MAINTENANCE LAMBDA STARTED")
         print("=" * 80)
 
-        # ---------------------------------------------------
-        # Determine prediction window
-        # ---------------------------------------------------
-
-        start_date, end_date = get_prediction_window()
-
-        print(f"Start Date : {start_date}")
-        print(f"End Date   : {end_date}")
 
         # ---------------------------------------------------
         # Load maintenance data
@@ -76,29 +68,11 @@ def lambda_handler(event, context):
 
         print(f"Predictions Generated : {(pred_df.head())}")
 
-        # ---------------------------------------------------
-        # Filter requested date window
-        # ---------------------------------------------------
-
-        filtered_df = pred_df[
-            (
-                pred_df["nextmaintenancedate"] >= pd.to_datetime(start_date)
-            )
-            &
-            (
-                pred_df["nextmaintenancedate"] <= pd.to_datetime(end_date)
-            )
-        ].copy()
-        
-        print(f"Filtered Rows : {len(filtered_df)}")
-
-        if filtered_df.empty:
+        if pred_df.empty:
 
             return {
                 "statusCode": 200,
                 "message": "No predictions found for date window",
-                "start_date": str(start_date.date()),
-                "end_date": str(end_date.date()),
                 "rows_inserted": 0
             }
 
@@ -111,16 +85,16 @@ def lambda_handler(event, context):
 
         
         # Decode type
-        filtered_df["type"] = TYPE_ENCODER.inverse_transform(
-            filtered_df["type"].astype(int)
+        pred_df["type"] = TYPE_ENCODER.inverse_transform(
+            pred_df["type"].astype(int)
         )
 
         # Decode reason
-        filtered_df["reason"] = REASON_ENCODER.inverse_transform(
-            filtered_df["reason"].astype(int)
+        pred_df["reason"] = REASON_ENCODER.inverse_transform(
+            pred_df["reason"].astype(int)
         )
         
-        output_df = filtered_df[
+        output_df = pred_df[
             [
                 "trolleyId",
                 "trolleyName",
@@ -160,8 +134,6 @@ def lambda_handler(event, context):
         return {
             "statusCode": 200,
             "message": "Prediction completed successfully",
-            "start_date": str(start_date.date()),
-            "end_date": str(end_date.date()),
             "rows_inserted": int(len(output_df))
         }
 

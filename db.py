@@ -43,37 +43,3 @@ def save_predictions(df):
     )
     
     
-def get_latest_forecast_date():
-
-    query = """
-    SELECT MAX(NextMaintanence) AS latest_date
-    FROM tbl_predictive_maintainanence
-    """
-
-    df = pd.read_sql(query, get_engine())
-
-    return df.iloc[0]["latest_date"]
-
-def get_prediction_window():
-
-    latest_date = get_latest_forecast_date()
-
-    today = pd.Timestamp.now().normalize()
-
-    # table empty
-    if latest_date is None or pd.isna(latest_date):
-
-        start_date = today
-        end_date = today + pd.Timedelta(days=9)
-
-    # table already contains forecasts
-    else:
-
-        start_date = (
-            pd.to_datetime(latest_date)
-            + pd.Timedelta(days=1)
-        )
-
-        end_date = start_date
-
-    return start_date.normalize(), end_date.normalize()
