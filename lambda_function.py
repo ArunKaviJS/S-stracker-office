@@ -74,14 +74,6 @@ def lambda_handler(event, context):
                 "message": "No predictions found for date window",
                 "rows_inserted": 0
             }
-
-        # ---------------------------------------------------
-        # Final Output Columns
-        #MySQL automatically inserts:AccuracyPercentage = 72.23
-           # Status = 1
-            #CreatedAt = CURRENT_TIMESTAMP
-        # ---------------------------------------------------
-
         
         # Decode type
         pred_df["type"] = TYPE_ENCODER.inverse_transform(
