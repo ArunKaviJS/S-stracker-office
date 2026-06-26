@@ -24,8 +24,8 @@ def build_predictions(
 
     df["reason"] = df["reason"].apply(map_reason)
 
-    df.loc[df["reason"].isin(MAJOR_REASONS), "type"] = "Major"
-    df.loc[~df["reason"].isin(MAJOR_REASONS), "type"] = "Minor"
+    df.loc[df["reason"].isin(MAJOR_REASONS), "type"] = "major"
+    df.loc[~df["reason"].isin(MAJOR_REASONS), "type"] = "minor"
 
     # Step 2: Get last maintenance per trolley per reason
     df["createdOn"] = pd.to_datetime(df["createdOn"], format="%d-%m-%Y %H:%M")
