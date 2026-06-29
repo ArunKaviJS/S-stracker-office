@@ -111,6 +111,7 @@ def table_exists(conn, table):
         return cur.fetchone()["cnt"] > 0
 
 
+
 #=============create table from main db DDL if not exist======
 def create_table_like(main_conn, ai_conn, table):
 
