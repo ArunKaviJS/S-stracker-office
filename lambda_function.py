@@ -1,4 +1,5 @@
 import os
+import re
 import pymysql
 
 TABLES = [ "tbl_trolley_maintenance", "tbl_device_history", "tbl_trolley","tbl_geozones"]
@@ -119,17 +120,38 @@ def create_table_like(main_conn, ai_conn, table):
         row = cur.fetchone()
         create_sql = row["Create Table"]
 
-    # Replace any USE db prefix in the DDL and ensure IF NOT EXISTS
     create_sql = create_sql.replace(
         "CREATE TABLE", "CREATE TABLE IF NOT EXISTS", 1
     )
 
-    with ai_conn.cursor() as cur:
-        cur.execute(create_sql)
+    try:
+        # Try with original DDL (including FK constraints) first
+        with ai_conn.cursor() as cur:
+            cur.execute(create_sql)
+        ai_conn.commit()
+        print(f"Created table {table} in AI_DB (with constraints)")
 
-    ai_conn.commit()
+    except Exception as e:
+        ai_conn.rollback()
+        print(f"Create with constraints failed ({e}), retrying without foreign keys")
 
-    print(f"Created table {table} in AI_DB")
+        # Strip foreign key lines and retry
+        cleaned_lines = []
+        for line in create_sql.splitlines():
+            stripped = line.strip()
+            if stripped.upper().startswith("CONSTRAINT") and "FOREIGN KEY" in stripped.upper():
+                continue
+            if stripped.upper().startswith("KEY") and "FOREIGN" in stripped.upper():
+                continue
+            cleaned_lines.append(line)
+
+        fallback_sql = "\n".join(cleaned_lines)
+        fallback_sql = re.sub(r",(\s*\n\s*\))", r"\1", fallback_sql)
+
+        with ai_conn.cursor() as cur:
+            cur.execute(fallback_sql)
+        ai_conn.commit()
+        print(f"Created table {table} in AI_DB (without foreign keys)")
     
     
 def sync_table(main_conn, ai_conn, table):
