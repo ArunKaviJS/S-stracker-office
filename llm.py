@@ -1,7 +1,7 @@
 import json
 import boto3
 
-from config import BEDROCK_MODEL_ID
+from config import BEDROCK_MODEL_ID_1, BEDROCK_MODEL_ID_2
 
 from schema_context import SCHEMA_CONTEXT
 
@@ -35,7 +35,7 @@ def _call_llm_for_sql(question):
     }
 
     response = bedrock.invoke_model(
-        modelId=BEDROCK_MODEL_ID,
+        modelId=BEDROCK_MODEL_ID_1,
         body=json.dumps(body)
     )
 
@@ -77,7 +77,7 @@ def _invoke_chat(system_prompt, user_content, temperature=0, max_tokens=512):
     }
 
     response = bedrock.invoke_model(
-        modelId="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+        modelId=BEDROCK_MODEL_ID_2,
         body=json.dumps(body)
     )
 
