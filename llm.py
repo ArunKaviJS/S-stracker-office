@@ -170,7 +170,7 @@ def generate_summary(question, df_text):
         ),
         user_content=f"Question: {question}\n\nData:\n{df_text}",
         temperature=0,
-        max_tokens=1024,
+        max_tokens=2048,
     )
 
     return json.loads(raw)
