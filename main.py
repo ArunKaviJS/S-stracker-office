@@ -39,7 +39,7 @@ def run(question, user_id):
 
 
     # Main flow
-    print('Executing Query')
+
     try:
         df = execute_query(sql)
     except Exception as e:

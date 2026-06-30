@@ -177,4 +177,5 @@ def generate_summary(question, df_text):
         max_tokens=2048,
     )
 
+    raw = raw.replace("```json", "").replace("```", "").strip()
     return json.loads(raw)
