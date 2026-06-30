@@ -1,10 +1,9 @@
 import json
 
-from llm import generate_sql, detect_intent, get_client
+from llm import generate_sql, detect_intent
 from db import execute_query
 from router import route
-from config import AZURE_OPENAI_DEPLOYMENT
-from sql_guard import validate_sql, check_question, BlockedQueryError
+from sql_guard import validate_sql, BlockedQueryError
 from response_store import create_response_table, save_response
 
 
@@ -56,13 +55,7 @@ def run(question, user_id):
         )
         return sql_error_result
 
-    result = route(
-        question,
-        intent,
-        df,
-        get_client(),
-        AZURE_OPENAI_DEPLOYMENT
-    )
+    result = route(question, intent, df)
 
     save_response(
         user_id=user_id,

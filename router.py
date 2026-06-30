@@ -18,7 +18,7 @@ def _paginate(df):
     return pages
 
 
-def route(question, intent, df, client, deployment):
+def route(question, intent, df):
     """
     Build the response dict using the pre-detected intent:
       {
@@ -42,7 +42,7 @@ def route(question, intent, df, client, deployment):
     # --- single_line intent ---
     if intent == "single_line":
         print('single line intent')
-        answer = narrate(client, deployment, question, df)
+        answer = narrate(question, df)
         return {
             "intent": "single_line",
             "chatTitle": answer,
