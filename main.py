@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from llm import generate_sql, detect_intent
 from db import execute_query
@@ -17,8 +18,11 @@ def run(question, user_id):
     try:
         print('Generating Query and Intent')
         
-        sql = generate_sql(question)
-        intent = detect_intent(question)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            sql_future    = executor.submit(generate_sql, question)
+            intent_future = executor.submit(detect_intent, question)
+            sql    = sql_future.result()
+            intent = intent_future.result()
         print('llm generated sql query :', sql)
         print('llm detected intent:', intent)
 
