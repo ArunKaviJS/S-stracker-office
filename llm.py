@@ -118,7 +118,7 @@ def narrate(question, df):
             "Answer in 1-3 sentences."
         ),
         user_content=f"Question: {question}\n\nDatabase Result:\n{txt}",
-        temperature=0.3,
+        temperature=0,
         max_tokens=512,
     )
     print(result)
@@ -169,7 +169,7 @@ def generate_summary(question, df_text):
             "- Keep titles concise, dashboard-style, and business-friendly.\n"
         ),
         user_content=f"Question: {question}\n\nData:\n{df_text}",
-        temperature=0.3,
+        temperature=0,
         max_tokens=1024,
     )
 
