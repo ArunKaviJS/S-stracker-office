@@ -77,7 +77,7 @@ def _invoke_chat(system_prompt, user_content, temperature=0, max_tokens=512):
     }
 
     response = bedrock.invoke_model(
-        modelId="anthropic.claude-haiku-4-5-20251001-v1:0",
+        modelId="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         body=json.dumps(body)
     )
 
