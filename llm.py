@@ -6,10 +6,14 @@ from config import BEDROCK_MODEL_ID
 from schema_context import SCHEMA_CONTEXT
 
 
+_bedrock_client = None
+
+
 def get_bedrock_client():
-    return boto3.client(
-        service_name="bedrock-runtime"
-    )
+    global _bedrock_client
+    if _bedrock_client is None:
+        _bedrock_client = boto3.client(service_name="bedrock-runtime")
+    return _bedrock_client
 
 
 def _call_llm_for_sql(question):
