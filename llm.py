@@ -119,7 +119,7 @@ def narrate(question, df):
         ),
         user_content=f"Question: {question}\n\nDatabase Result:\n{txt}",
         temperature=0.3,
-        max_tokens=256,
+        max_tokens=512,
     )
     print(result)
     return result
@@ -170,7 +170,7 @@ def generate_summary(question, df_text):
         ),
         user_content=f"Question: {question}\n\nData:\n{df_text}",
         temperature=0.3,
-        max_tokens=2048,
+        max_tokens=1024,
     )
 
     return json.loads(raw)
