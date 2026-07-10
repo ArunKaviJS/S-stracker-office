@@ -20,12 +20,14 @@ RULES:
 * Default filter: status=1 unless user explicitly requests otherwise.
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
 * Output must start with SELECT.
-* Before output:
-  1. Identify required tables.
-  2. Verify every column exists.
-  3. Verify joins exist in RELATIONSHIPS.
-  4. Verify GROUP BY compliance.
-  5. Regenerate if validation fails.
+* Do NOT include any reasoning, explanation, comments, or step-by-step thinking.
+* Do NOT output anything before or after the SQL statement.
+* Internally verify before outputting:
+  - All required tables exist in TABLES.
+  - Every column exists in its table.
+  - All joins exist in RELATIONSHIPS.
+  - GROUP BY includes every non-aggregated SELECT column.
+  If verification fails, correct and retry silently — never expose the reasoning.
 
 TABLES
 

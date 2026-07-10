@@ -23,8 +23,8 @@ def _call_llm_for_sql(question):
 
     body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 2048,
-        "temperature": 0,
+        "max_tokens": 4096,   # complex nested queries can exceed 2048 tokens
+        "temperature": 0,     # deterministic output, no hallucination drift
         "system": SCHEMA_CONTEXT,
         "messages": [
             {
@@ -43,10 +43,16 @@ def _call_llm_for_sql(question):
         response["body"].read().decode("utf-8")
     )
 
+    stop_reason = result.get("stop_reason", "")
+    if stop_reason == "max_tokens":
+        print("[llm] WARNING: SQL response was truncated (hit max_tokens limit)")
+
     sql = result["content"][0]["text"].strip()
 
+    # Strip markdown fences if the model wrapped the output
     sql = (
         sql.replace("```sql", "")
+           .replace("```mysql", "")
            .replace("```", "")
            .strip()
     )
