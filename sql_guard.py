@@ -43,15 +43,15 @@ class BlockedQueryError(Exception):
 
 
 
-def _strip_markdown(sql: str) -> str:
-    """Remove markdown code fences if the LLM wrapped the SQL in ```sql ... ```."""
-    stripped = sql.strip()
-    if stripped.startswith("```"):
-        # Remove opening fence (```sql or ``` or ```mysql etc.)
-        stripped = re.sub(r"^```[a-zA-Z]*\n?", "", stripped)
-        # Remove closing fence
-        stripped = re.sub(r"```\s*$", "", stripped)
-    return stripped.strip()
+# def _strip_markdown(sql: str) -> str:
+#     """Remove markdown code fences if the LLM wrapped the SQL in ```sql ... ```."""
+#     stripped = sql.strip()
+#     if stripped.startswith("```"):
+#         # Remove opening fence (```sql or ``` or ```mysql etc.)
+#         stripped = re.sub(r"^```[a-zA-Z]*\n?", "", stripped)
+#         # Remove closing fence
+#         stripped = re.sub(r"```\s*$", "", stripped)
+#     return stripped.strip()
 
 
 def validate_sql(sql: str, user_id=None, question: str = None) -> None:
@@ -63,7 +63,7 @@ def validate_sql(sql: str, user_id=None, question: str = None) -> None:
         _save_blocked(user_id, question, sql)
         raise BlockedQueryError("EMPTY_SQL")
 
-    sql = _strip_markdown(sql)
+    # sql = _strip_markdown(sql)
     print(f"[sql_guard] SQL preview: {repr(sql[:80])}")
 
     if not re.match(r"(?i)^\s*SELECT\b", sql):

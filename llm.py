@@ -23,7 +23,7 @@ def _call_llm_for_sql(question):
 
     body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 1024,
+        "max_tokens": 2048,
         "temperature": 0,
         "system": SCHEMA_CONTEXT,
         "messages": [
