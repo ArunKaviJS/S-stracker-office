@@ -36,16 +36,11 @@ _BLOCKED_PATTERNS = {
 
 
 class BlockedQueryError(Exception):
-    pass
+    def __init__(self, word: str):
+        self.word = word
+        super().__init__(f"Restricted keyword detected: '{word}'")
 
 
-def check_question(question: str) -> None:
-    """Raise BlockedQueryError if the user's question asks for a blocked operation."""
-    print("checking user question")
-    for word, pattern in _BLOCKED_PATTERNS.items():
-        if pattern.search(question):
-            print("restricted word in question:", word)
-            raise BlockedQueryError(word)
 
 
 def validate_sql(sql: str, user_id=None, question: str = None) -> None:
@@ -53,16 +48,18 @@ def validate_sql(sql: str, user_id=None, question: str = None) -> None:
     print("validating sql")
 
     if not sql or not sql.strip():
+        print("[sql_guard] Blocked SQL — query is empty")
         _save_blocked(user_id, question, sql)
         raise BlockedQueryError("EMPTY_SQL")
 
     if not re.match(r"(?i)^\s*SELECT\b", sql.strip()):
+        print("[sql_guard] Blocked SQL — query does not start with SELECT")
         _save_blocked(user_id, question, sql)
         raise BlockedQueryError("NOT_SELECT")
 
     for word, pattern in _BLOCKED_PATTERNS.items():
         if pattern.search(sql):
-            print("restricted word in sql:", word)
+            print(f"[sql_guard] Blocked SQL — restricted keyword: '{word}'")
             _save_blocked(user_id, question, sql)
             raise BlockedQueryError(word)
 
