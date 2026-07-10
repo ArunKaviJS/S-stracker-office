@@ -15,7 +15,6 @@ RULES:
   boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress
 * MySQL ONLY_FULL_GROUP_BY is enabled.
 * Every non-aggregated selected column must appear in GROUP BY.
-* Add LIMIT 500 for row-level queries.
 * Do NOT add LIMIT for COUNT,SUM,AVG,MIN,MAX queries.
 * Default filter: status=1 unless user explicitly requests otherwise.
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
