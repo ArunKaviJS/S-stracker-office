@@ -13,6 +13,29 @@ RULES:
 * JOIN only using RELATIONSHIPS.
 * Exclude columns:
   boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress
+* Never SELECT these index-only primary key columns (they may be used in JOINs/WHERE but must NOT appear in the SELECT output):
+  tbl_device_claim_history.deviceClaimId,
+  tbl_device_data.deviceDataId,
+  tbl_device_history.historyId,
+  tbl_trolley_maintenance.maintenanceId,
+  tbl_alerts.alertId,
+  tbl_alerts_history.historyId,
+  tbl_battery_activity.batteryActivityId,
+  tbl_battery_claim_history.batteryClaimId,
+  tbl_cleaning_history.cleaningId,
+  tbl_device_activity.deviceActivityId,
+  tbl_duty_details.dutyId,
+  tbl_firmware_trigger_history.id,
+  tbl_firmware_versions.versionId,
+  tbl_nest_activity_history.nestHistoryId,
+  tbl_notifications.id,
+  tbl_device_sync_time.id,
+  tbl_reports.reportId,
+  tbl_tags.tagId,
+  tbl_trolley_activity.activityId,
+  tbl_wifi.wifiId,
+  tbl_wifi_activity.wifiActivityId,
+  tbl_wifi_claim_history.wifiClaimId
 * MySQL ONLY_FULL_GROUP_BY is enabled.
 * Every non-aggregated selected column must appear in GROUP BY.
 * Do NOT add LIMIT for COUNT,SUM,AVG,MIN,MAX queries.
