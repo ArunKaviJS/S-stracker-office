@@ -225,7 +225,7 @@ tbl_alerts_history(
   type             VARCHAR(50)
 )
 
-tbl_duty_roaster(
+tbl_duty_roster(
   rosterId         INT PK,
   shift            ...,
   totalPushers     ...,
@@ -236,12 +236,231 @@ tbl_duty_roaster(
   shiftDate        DATE/DATETIME
 )
 
+tbl_battery_activity(
+  batteryActivityId  INT(11) PK,
+  batteryId          INT(11),       -- FK -> tbl_battery.batteryId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  notes              VARCHAR(200),
+  updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Battery Pack Created"]
+  createdOn          DATETIME,
+  status             ENUM('0','1')
+)
+-- Tracks every change/action made on a battery pack. status=1 is active.
+
+tbl_battery_claim_history(
+  batteryClaimId     INT(11) PK,
+  batteryId          INT(11),       -- FK -> tbl_battery.batteryId
+  reason             VARCHAR(100),  -- reason for warranty claim e.g. "Battery Failure"
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  claimNotes         VARCHAR(500),
+  resolveNotes       VARCHAR(500),
+  resolvedDate       DATETIME,
+  createdOn          DATETIME,
+  status             ENUM('0','1','2')  -- 0=inactive,1=resolved,2=open/pending
+)
+-- Records warranty claims raised against battery packs.
+
+tbl_cleaning_history(
+  cleaningId         INT(11) PK,
+  trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
+  geozoneId          INT(11),       -- FK -> tbl_geozones.geozoneId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1','2')  -- 0=inactive,1=completed,2=pending
+)
+-- Records trolley cleaning events per geozone.
+
+tbl_device_activity(
+  deviceActivityId   INT(11) PK,
+  deviceId           INT(11),       -- FK -> tbl_device.deviceId
+  notes              VARCHAR(500),
+  action             VARCHAR(25),   -- e.g. "Tracker Created"
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME
+)
+-- Audit log of actions performed on tracker/device hardware.
+
+tbl_device_sync_time(
+  id                 INT(11) PK,
+  createdOn          DATETIME,
+  status             ENUM('0','1'),
+  batteryLife        VARCHAR(100),  -- estimated battery life string e.g. "3 days 19 hours"
+  interval           INT(11)        -- sync interval in seconds e.g. 300, 900
+)
+-- Configuration records for device sync intervals; the active record (status=1) is the current sync setting.
+
+tbl_duty_details(
+  dutyId             INT(11) PK,
+  victor             VARCHAR(10),   -- area/zone code e.g. "MTB", "CP"
+  teamName           VARCHAR(100),  -- e.g. "Alpha", "Bravo"
+  rosterId           INT(11),       -- FK -> tbl_duty_roster.rosterId
+  supervisorId       INT(11),       -- FK -> tbl_users.userId
+  pushersNo          INT(11),       -- number of pushers assigned
+  workersNo          INT(11),       -- number of workers assigned
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1')
+)
+-- Duty assignments linking a team to a roster shift with headcount details.
+
+tbl_firmware_trigger_history(
+  id                 INT(11) PK,
+  deviceEndpoint     VARCHAR(100),  -- FK -> tbl_device.deviceEndpoint
+  previousVersion    VARCHAR(100),
+  updateVersion      VARCHAR(100),
+  triggeredTime      DATETIME,
+  geozoneId          INT(11),       -- FK -> tbl_geozones.geozoneId
+  updateStatus       ENUM('Triggered','OTA-WRITE-SUCCESS','OTA-WRITE-FAILED','Completed','UpdatedAnotherGeozone')
+)
+-- History of OTA firmware update triggers per device.
+
+tbl_firmware_versions(
+  versionId          INT(11) PK,
+  version            VARCHAR(100),  -- firmware version string e.g. "TR1@17042026"
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  document           VARCHAR(500),  -- S3 URL to firmware file
+  createdOn          DATETIME,
+  status             ENUM('0','1')
+)
+-- Registry of available firmware versions that can be pushed via OTA.
+
+tbl_geofence(
+  id                 INT(11) PK,
+  name               VARCHAR(255),
+  boundary           POLYGON,       -- excluded from SELECT per rules
+  status             ENUM('0','1')
+)
+-- Defines named geofence boundaries for tracking out-of-fence events.
+
+tbl_nest_activity_history(
+  nestHistoryId      INT(11) PK,
+  nestId             INT(11),       -- FK -> tbl_nest.nestId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  notes              VARCHAR(500),
+  createdOn          DATETIME,
+  status             ENUM('0','1','2')
+)
+-- Audit log of changes/actions performed on nests.
+
+tbl_notifications(
+  id                 INT(11) PK,
+  userId             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME,
+  status             ENUM('0','1','2'),  -- 0=unread,1=active,2=read
+  data               LONGTEXT,      -- JSON payload with alert details
+  content            VARCHAR(2500), -- HTML notification body
+  title              VARCHAR(500)   -- e.g. "New Scattered Trolley Alert - TR1-CE5C"
+)
+-- In-app notifications sent to users for alerts and system events.
+
+tbl_registered_device(
+  deviceId           INT(11) PK,
+  deviceEndpoint     VARCHAR(100),  -- device MAC-based identifier e.g. "TR1-B43A4535C414"
+  registrationId     VARCHAR(255),
+  registrationDate   DATETIME,
+  GPSMACAddress      VARCHAR(100)   -- excluded from SELECT per rules
+)
+-- Registry of physically registered tracker devices.
+
+tbl_reports(
+  reportId           INT(11) PK,
+  reportName         VARCHAR(255),
+  reportModuleName   ENUM('trolley','dutyroster','alert'),
+  reportStartDate    DATETIME,
+  reportEndDate      DATETIME,
+  reportFile         VARCHAR(255),  -- S3 URL to generated report file
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1'),
+  reportStatus       ENUM('processing','failed','download','unavailable','null')
+)
+-- Records of generated reports for trolley, duty roster, and alert modules.
+
+tbl_tags(
+  tagId              INT(11) PK,
+  tag                VARCHAR(100),  -- e.g. "MTB", "STCP", "ALPS", "USIM"
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1')
+)
+-- Lookup table for location/area tags used in geozones and duty assignments.
+
+tbl_trolley_activity(
+  activityId         INT(11) PK,
+  preSerialNo        VARCHAR(100),  -- device endpoint before swap
+  postSerialNo       VARCHAR(100),  -- device endpoint after swap
+  trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME,
+  status             ENUM('0','1')
+)
+-- Records tracker device swap/replacement activities on trolleys.
+
+tbl_users(
+  userId             INT(11) PK,
+  firstName          VARCHAR(50),
+  lastName           VARCHAR(50),
+  createdOn          DATETIME
+)
+-- System users; referenced by doneBy/supervisorId/assigneeId in other tables.
+
+tbl_wifi(
+  wifiId             INT(11) PK,
+  wifiName           VARCHAR(100),  -- WiFi beacon identifier e.g. "BC1-F412FA89909D"
+  warrantyStartDate  DATETIME,
+  warrantyExpiryDate DATETIME,
+  warrantyDuration   ENUM('12 months','18 months','24 months'),
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1')
+)
+-- Registry of WiFi beacon hardware units with warranty tracking.
+
+tbl_wifi_activity(
+  wifiActivityId     INT(11) PK,
+  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  notes              VARCHAR(200),
+  updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Wifi Beacon Created"]
+  createdOn          DATETIME,
+  status             ENUM('0','1')
+)
+-- Audit log of changes/actions performed on WiFi beacons.
+
+tbl_wifi_claim_history(
+  wifiClaimId        INT(11) PK,
+  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
+  reason             VARCHAR(100),  -- e.g. "Wifi Beacon Failure"
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  claimNotes         VARCHAR(500),
+  resolveNotes       VARCHAR(500),
+  resolvedDate       DATETIME,
+  createdOn          DATETIME,
+  status             ENUM('0','1','2')  -- 0=inactive,1=resolved,2=open/pending
+)
+-- Records warranty claims raised against WiFi beacon units.
+
+tbl_wifi_fingerprint(
+  fingerprintId      INT(11) PK,
+  latitude           DOUBLE,
+  longitude          DOUBLE,
+  status             ENUM('0','1'),
+  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
+  geolayerId         INT(11),       -- FK -> tbl_geolayers.geolayerId
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  mac                VARCHAR(100),  -- MAC address of the beacon e.g. "f4:12:fa:89:90:9d"
+  type               ENUM('UTW','OTHERS')
+)
+-- Stores physical location fingerprints of WiFi beacons used for indoor positioning.
+
 RELATIONSHIPS
 
 tbl_trolley.trolleyId=tbl_device_data.trolleyId
 tbl_trolley.trolleyId=tbl_device_history.trolleyId
 tbl_trolley.trolleyId=tbl_trolley_maintenance.trolleyId
-tbl_trolley.serialNo=tbl_battery.serialNo
 tbl_trolley.deviceId=tbl_device.deviceId
 tbl_trolley.latestGeozoneId=tbl_geozones.geozoneId
 tbl_trolley.latestGeolayerId=tbl_geolayers.geolayerId
@@ -257,6 +476,32 @@ tbl_geozones.geolayerId=tbl_geolayers.geolayerId
 tbl_alerts.trolleyId=tbl_trolley.trolleyId
 tbl_alerts.recentGeozoneId=tbl_geozones.geozoneId
 tbl_alerts_history.alertId=tbl_alerts.alertId
+tbl_battery_activity.batteryId=tbl_battery.batteryId
+tbl_battery_activity.doneBy=tbl_users.userId
+tbl_battery_claim_history.batteryId=tbl_battery.batteryId
+tbl_battery_claim_history.doneBy=tbl_users.userId
+tbl_cleaning_history.trolleyId=tbl_trolley.trolleyId
+tbl_cleaning_history.geozoneId=tbl_geozones.geozoneId
+tbl_cleaning_history.doneBy=tbl_users.userId
+tbl_device_activity.deviceId=tbl_device.deviceId
+tbl_device_activity.doneBy=tbl_users.userId
+tbl_duty_details.rosterId=tbl_duty_roster.rosterId
+tbl_duty_details.supervisorId=tbl_users.userId
+tbl_firmware_trigger_history.deviceEndpoint=tbl_device.deviceEndpoint
+tbl_firmware_trigger_history.geozoneId=tbl_geozones.geozoneId
+tbl_firmware_versions.doneBy=tbl_users.userId
+tbl_nest_activity_history.nestId=tbl_nest.nestId
+tbl_nest_activity_history.doneBy=tbl_users.userId
+tbl_notifications.userId=tbl_users.userId
+tbl_reports.doneBy=tbl_users.userId
+tbl_trolley_activity.trolleyId=tbl_trolley.trolleyId
+tbl_trolley_activity.doneBy=tbl_users.userId
+tbl_wifi_activity.wifiId=tbl_wifi.wifiId
+tbl_wifi_activity.doneBy=tbl_users.userId
+tbl_wifi_claim_history.wifiId=tbl_wifi.wifiId
+tbl_wifi_claim_history.doneBy=tbl_users.userId
+tbl_wifi_fingerprint.wifiId=tbl_wifi.wifiId
+tbl_wifi_fingerprint.geolayerId=tbl_geolayers.geolayerId
 
 QUERY_ROUTING
 
@@ -267,9 +512,29 @@ zone,floor -> tbl_geozones,tbl_geolayers
 nest_availability -> tbl_nest
 maintenance -> tbl_trolley_maintenance
 battery_warranty -> tbl_battery
+battery_activity,battery_log -> tbl_battery_activity
+battery_claim -> tbl_battery_claim_history
 device_warranty,claims -> tbl_device,tbl_device_claim_history
+device_activity,tracker_log -> tbl_device_activity
+device_sync,sync_interval -> tbl_device_sync_time
 active_alerts -> tbl_alerts(status=0)
 alert_history -> tbl_alerts_history
-shift_headcount,roster -> tbl_duty_roaster
+shift_headcount,roster -> tbl_duty_roster
+duty_assignment,team -> tbl_duty_details
+cleaning,cleaned -> tbl_cleaning_history
+firmware_update,ota -> tbl_firmware_trigger_history
+firmware_version -> tbl_firmware_versions
+geofence -> tbl_geofence
+nest_activity -> tbl_nest_activity_history
+notifications,user_alerts -> tbl_notifications
+registered_device -> tbl_registered_device
+reports,generated_report -> tbl_reports
+tags -> tbl_tags
+trolley_swap,device_swap -> tbl_trolley_activity
+users,staff -> tbl_users
+wifi_beacon,wifi_warranty -> tbl_wifi
+wifi_activity,wifi_log -> tbl_wifi_activity
+wifi_claim -> tbl_wifi_claim_history
+wifi_fingerprint,indoor_positioning -> tbl_wifi_fingerprint
 """
 
