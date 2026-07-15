@@ -15,7 +15,7 @@ RULES:
   boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress
 * Whenever an enum column whose values are numeric codes (0/1/2) appears in SELECT, always wrap it with a CASE expression to show the human-readable label instead of the raw code. Use exactly these mappings:
 
-  -- Generic status (0=Inactive / Deactivated / Offline, 1=Active / Online) used by:
+  -- Generic status (0=Inactive / Deactivated, 1=Active) used by:
   --   tbl_battery.status, tbl_device_data.status, tbl_device_history.status,
   --   tbl_geolayers.status, tbl_geozones.status, tbl_trolley.status,
   --   tbl_alerts_history.status, tbl_duty_roaster.status,
@@ -25,7 +25,7 @@ RULES:
   --   tbl_geofence.status, tbl_reports.status, tbl_tags.status,
   --   tbl_trolley_activity.status, tbl_wifi.status, tbl_wifi_activity.status,
   --   tbl_wifi_fingerprint.status
-  CASE <col> WHEN '0' THEN 'Inactive / Deactivated / Offline' WHEN '1' THEN 'Active / Online' END AS <col>
+  CASE <col> WHEN '0' THEN 'Inactive / Deactivated' WHEN '1' THEN 'Active' END AS <col>
 
   -- tbl_device_claim_history.status / tbl_battery_claim_history.status / tbl_wifi_claim_history.status
   CASE <col> WHEN '0' THEN 'Resolved' WHEN '1' THEN 'No Active Claim' WHEN '2' THEN 'Claim Raised' END AS <col>
@@ -37,16 +37,16 @@ RULES:
   CASE <col> WHEN '0' THEN 'Unassigned' WHEN '1' THEN 'Assigned' WHEN '2' THEN 'Resolved' END AS <col>
 
   -- tbl_nest.status
-  CASE <col> WHEN '1' THEN 'Active / Online' WHEN '2' THEN 'Inactive / Deactivated / Offline' END AS <col>
+  CASE <col> WHEN '1' THEN 'Active' WHEN '2' THEN 'Inactive / Deactivated' END AS <col>
 
   -- tbl_nest_activity_history.status
-  CASE <col> WHEN '1' THEN 'Active / Online' WHEN '2' THEN 'Inactive / Deactivated / Offline' END AS <col>
+  CASE <col> WHEN '1' THEN 'Active' WHEN '2' THEN 'Inactive / Deactivated' END AS <col>
 
   -- tbl_notifications.status
-  CASE <col> WHEN '0' THEN 'Unread' WHEN '1' THEN 'Active / Online' WHEN '2' THEN 'Read' END AS <col>
+  CASE <col> WHEN '0' THEN 'Unread' WHEN '1' THEN 'Active' WHEN '2' THEN 'Read' END AS <col>
 
   -- tbl_cleaning_history.status
-  CASE <col> WHEN '0' THEN 'Inactive / Deactivated / Offline' WHEN '1' THEN 'Completed' WHEN '2' THEN 'Pending' END AS <col>
+  CASE <col> WHEN '0' THEN 'Inactive / Deactivated' WHEN '1' THEN 'Completed' WHEN '2' THEN 'Pending' END AS <col>
 
   -- tbl_device.mode
   CASE <col> WHEN 'sleep' THEN 'Offline' WHEN 'awake' THEN 'Online' WHEN 'idle' THEN 'Idle' END AS <col>
@@ -112,7 +112,7 @@ tbl_battery(
   warrantyDuration ENUM('12 months','18 months','24 months'),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1') -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status           ENUM('0','1') -- 0=Inactive / Deactivated, 1=Active,
 )
 
 tbl_device(
@@ -151,7 +151,7 @@ tbl_device_data(
   firmwareVersion  VARCHAR(100),
   momentDetection  VARCHAR(100),
   timestamp        DATETIME,
-  status           ENUM('0','1'), -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status           ENUM('0','1'), -- 0=Inactive / Deactivated, 1=Active,
   intervalTimeset  INT(11),
   GPSLatitude      DOUBLE,
   GPSLongitude     DOUBLE,
@@ -180,7 +180,7 @@ tbl_device_history(
   geolayerId       INT(11),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status           ENUM('0','1'), -- 0=Inactive / Deactivated, 1=Active,
   nestId           INT(11),
   locationSource   VARCHAR(255),
   address          VARCHAR(255)
@@ -194,7 +194,7 @@ tbl_geolayers(
   floorNo          VARCHAR(100),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status           ENUM('0','1'), -- 0=Inactive / Deactivated, 1=Active,
   boundaryColor    VARCHAR(50)
 )
 
@@ -207,7 +207,7 @@ tbl_geozones(
   boundaryColor    VARCHAR(50),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status           ENUM('0','1'), -- 0=Inactive / Deactivated, 1=Active,
   type             ENUM('general','cleaning','maintenance'),
   noOfTrolleys     INT(11)
 )
@@ -221,7 +221,7 @@ tbl_nest(
   boundaryColor    VARCHAR(50),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1','2'), -- 1=Active / Online,2=Inactive / Deactivated / Offline
+  status           ENUM('0','1','2'), -- 1=Active,2=Inactive / Deactivated
   availableTrolly  INT(11)
 )
 
@@ -232,7 +232,7 @@ tbl_trolley(
   deviceId             INT(11),
   createdOn            DATETIME,
   modifiedOn           DATETIME,
-  status               ENUM('0','1'), -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status               ENUM('0','1'), -- 0=Inactive, 1=Active ,
   type                 ENUM('landside','airside'),
   maintenanceStatus    ENUM('major','minor','no maintenance'),
   lastCleaned          DATETIME,
@@ -284,7 +284,7 @@ tbl_alerts_history(
   notes            VARCHAR(500),
   doneBy           INT(11),
   createdOn        DATETIME,
-  status           ENUM('0','1'),  --0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status           ENUM('0','1'),  --0=Inactive / Deactivated, 1=Active,
   id               INT(11),
   type             VARCHAR(50)
 )
@@ -296,7 +296,7 @@ tbl_roster(
   totalWorkers  INT(11),
   createdOn     DATETIME,
   modifiedOn    DATETIME,
-  status        ENUM('0','1'),  --0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status        ENUM('0','1'),  --0=Inactive / Deactivated, 1=Active,
   shiftDate     DATETIME
 )
 
@@ -307,9 +307,9 @@ tbl_battery_activity(
   notes              VARCHAR(200),
   updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Battery Pack Created"]
   createdOn          DATETIME,
-  status             ENUM('0','1')  --0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  --0=Inactive / Deactivated, 1=Active,
 )
--- Tracks every change/action made on a battery pack. status=1 is Active / Online.
+-- Tracks every change/action made on a battery pack. status=1 is Active.
 
 tbl_battery_claim_history(
   batteryClaimId     INT(11) PK,
@@ -348,11 +348,11 @@ tbl_device_activity(
 tbl_device_sync_time(
   id                 INT(11) PK,
   createdOn          DATETIME,
-  status             ENUM('0','1'),  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1'),  -- 0=Inactive / Deactivated, 1=Active,
   batteryLife        VARCHAR(100),  -- estimated battery life string e.g. "3 days 19 hours"
   interval           INT(11)        -- sync interval in seconds e.g. 300, 900
 )
--- Configuration records for device sync intervals; the Active / Online record (status=1) is the current sync setting.
+-- Configuration records for device sync intervals; the Active record (status=1) is the current sync setting.
 
 tbl_duty_details(
   dutyId             INT(11) PK,
@@ -364,7 +364,7 @@ tbl_duty_details(
   workersNo          INT(11),       -- number of workers assigned
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  -- 0=Inactive / Deactivated, 1=Active,
 )
 -- Duty assignments linking a team to a roster shift with headcount details.
 
@@ -385,7 +385,7 @@ tbl_firmware_versions(
   doneBy             INT(11),       -- FK -> tbl_users.userId
   document           VARCHAR(500),  -- S3 URL to firmware file
   createdOn          DATETIME,
-  status             ENUM('0','1')  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  -- 0=Inactive / Deactivated, 1=Active,
 )
 -- Registry of available firmware versions that can be pushed via OTA.
 
@@ -393,7 +393,7 @@ tbl_geofence(
   id                 INT(11) PK,
   name               VARCHAR(255),
   boundary           POLYGON,       -- excluded from SELECT per rules
-  status             ENUM('0','1')  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  -- 0=Inactive / Deactivated, 1=Active,
 )
 -- Defines named geofence boundaries for tracking out-of-fence events.
 
@@ -403,7 +403,7 @@ tbl_nest_activity_history(
   doneBy             INT(11),       -- FK -> tbl_users.userId
   notes              VARCHAR(500),
   createdOn          DATETIME,
-  status             ENUM('0','1','2')  --1=Active / Online,2=Inactive / Deactivated / Offline
+  status             ENUM('0','1','2')  --1=Active,2=Inactive / Deactivated
 )
 -- Audit log of changes/actions performed on nests.
 
@@ -411,7 +411,7 @@ tbl_notifications(
   id                 INT(11) PK,
   userId             INT(11),       -- FK -> tbl_users.userId
   createdOn          DATETIME,
-  status             ENUM('0','1','2'),  -- 0=unread,1=Active / Online,2=read
+  status             ENUM('0','1','2'),  -- 0=unread,1=Active,2=read
   data               LONGTEXT,      -- JSON payload with alert details
   content            VARCHAR(2500), -- HTML notification body
   title              VARCHAR(500)   -- e.g. "New Scattered Trolley Alert - TR1-CE5C"
@@ -437,7 +437,7 @@ tbl_reports(
   doneBy             INT(11),       -- FK -> tbl_users.userId
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1'), -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1'), -- 0=Inactive / Deactivated, 1=Active,
   reportStatus       ENUM('processing','failed','download','unavailable','null')
 )
 -- Records of generated reports for trolley, duty roster, and alert modules.
@@ -447,7 +447,7 @@ tbl_tags(
   tag                VARCHAR(100),  -- e.g. "MTB", "STCP", "ALPS", "USIM"
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  -- 0=Inactive / Deactivated, 1=Active,
 )
 -- Lookup table for location/area tags used in geozones and duty assignments.
 
@@ -458,7 +458,7 @@ tbl_trolley_activity(
   trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
   doneBy             INT(11),       -- FK -> tbl_users.userId
   createdOn          DATETIME,
-  status             ENUM('0','1')  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  -- 0=Inactive / Deactivated, 1=Active,
 )
 -- Records tracker device swap/replacement activities on trolleys.
 
@@ -478,7 +478,7 @@ tbl_wifi(
   warrantyDuration   ENUM('12 months','18 months','24 months'),
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  -- 0=Inactive / Deactivated, 1=Active,
 )
 -- Registry of WiFi beacon hardware units with warranty tracking.
 
@@ -489,7 +489,7 @@ tbl_wifi_activity(
   notes              VARCHAR(200),
   updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Wifi Beacon Created"]
   createdOn          DATETIME,
-  status             ENUM('0','1')  -- 0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1')  -- 0=Inactive / Deactivated, 1=Active,
 )
 -- Audit log of changes/actions performed on WiFi beacons.
 
@@ -510,7 +510,7 @@ tbl_wifi_fingerprint(
   fingerprintId      INT(11) PK,
   latitude           DOUBLE,
   longitude          DOUBLE,
-  status             ENUM('0','1'),  0=Inactive / Deactivated / Offline, 1=Active / Online,
+  status             ENUM('0','1'),  0=Inactive / Deactivated, 1=Active,
   wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
   geolayerId         INT(11),       -- FK -> tbl_geolayers.geolayerId
   createdOn          DATETIME,
