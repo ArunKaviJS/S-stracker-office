@@ -13,6 +13,52 @@ RULES:
 * JOIN only using RELATIONSHIPS.
 * Exclude columns:
   boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress
+* Whenever an enum column whose values are numeric codes (0/1/2) appears in SELECT, always wrap it with a CASE expression to show the human-readable label instead of the raw code. Use exactly these mappings:
+
+  -- Generic status (0=Inactive / Deactivated / Offline, 1=Active / Online) used by:
+  --   tbl_battery.status, tbl_device_data.status, tbl_device_history.status,
+  --   tbl_geolayers.status, tbl_geozones.status, tbl_trolley.status,
+  --   tbl_alerts_history.status, tbl_duty_roaster.status,
+  --   tbl_battery_activity.status, tbl_cleaning_history (not 0/1/2 here — see below),
+  --   tbl_device_activity (no status), tbl_device_sync_time.status,
+  --   tbl_duty_details.status, tbl_firmware_versions.status,
+  --   tbl_geofence.status, tbl_reports.status, tbl_tags.status,
+  --   tbl_trolley_activity.status, tbl_wifi.status, tbl_wifi_activity.status,
+  --   tbl_wifi_fingerprint.status
+  CASE <col> WHEN '0' THEN 'Inactive / Deactivated / Offline' WHEN '1' THEN 'Active / Online' END AS <col>
+
+  -- tbl_device_claim_history.status / tbl_battery_claim_history.status / tbl_wifi_claim_history.status
+  CASE <col> WHEN '0' THEN 'Resolved' WHEN '1' THEN 'No Active Claim' WHEN '2' THEN 'Claim Raised' END AS <col>
+
+  -- tbl_trolley_maintenance.status
+  CASE <col> WHEN '0' THEN 'Unassigned' WHEN '1' THEN 'Resolved' WHEN '2' THEN 'Assigned' END AS <col>
+
+  -- tbl_alerts.status
+  CASE <col> WHEN '0' THEN 'Unassigned' WHEN '1' THEN 'Assigned' WHEN '2' THEN 'Resolved' END AS <col>
+
+  -- tbl_nest.status
+  CASE <col> WHEN '1' THEN 'Active / Online' WHEN '2' THEN 'Inactive / Deactivated / Offline' END AS <col>
+
+  -- tbl_nest_activity_history.status
+  CASE <col> WHEN '1' THEN 'Active / Online' WHEN '2' THEN 'Inactive / Deactivated / Offline' END AS <col>
+
+  -- tbl_notifications.status
+  CASE <col> WHEN '0' THEN 'Unread' WHEN '1' THEN 'Active / Online' WHEN '2' THEN 'Read' END AS <col>
+
+  -- tbl_cleaning_history.status
+  CASE <col> WHEN '0' THEN 'Inactive / Deactivated / Offline' WHEN '1' THEN 'Completed' WHEN '2' THEN 'Pending' END AS <col>
+
+  -- tbl_device.mode
+  CASE <col> WHEN 'sleep' THEN 'Offline' WHEN 'awake' THEN 'Online' WHEN 'idle' THEN 'Idle' END AS <col>
+
+  -- tbl_duty_roaster.shift
+  CASE <col> WHEN 'day' THEN 'Day Shift' WHEN 'night' THEN 'Night Shift' END AS <col>
+
+  -- Enum columns whose values are already human-readable — use AS-IS (no CASE needed):
+  --   warrantyDuration, type (trolley/geozone/wifi_fingerprint/alerts_history),
+  --   maintenanceStatus, locationSource, reportModuleName, reportStatus, updateStatus,
+  --   tbl_device.status ('registered'/'deregistered')
+
 * Never SELECT these index-only primary key columns (they may be used in JOINs/WHERE but must NOT appear in the SELECT output):
   tbl_device_claim_history.deviceClaimId,
   tbl_device_data.deviceDataId,
