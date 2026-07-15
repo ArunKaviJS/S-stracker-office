@@ -48,6 +48,8 @@ def save_response(
     else:
         response_value = json.dumps(response, default=str)
 
+    
+    print('saved response',chat_title)
     with engine.begin() as conn:
 
         conn.execute(text("""
