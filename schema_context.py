@@ -190,11 +190,11 @@ IDLE_TROLLEY_LOGIC:
 * status=1
 * ignore NULL trolleyId/geozoneId/createdOn
 * LAG(geozoneId) OVER(PARTITION BY trolleyId ORDER BY createdOn)
-* consecutive same-zone records form streak
-* idle_hours=MAX(createdOn)-MIN(createdOn)
-* >=24 Critical
-* >=6 Severe
-* >=2 Idle
+* consecutive same-zone records form a streak group
+* per streak: idle_hours=TIMESTAMPDIFF(HOUR, MIN(createdOn), MAX(createdOn)), latest_geozoneId=geozoneId of that streak
+* DEDUPLICATION (critical): after computing all streaks, keep only ONE row per trolleyId — the streak with the MAXIMUM idle_hours; if tied, pick the streak with the latest MAX(createdOn)
+* final output must have exactly one row per trolleyId — never repeat the same trolleyId across multiple rows
+* classify the kept streak: >=24 Critical, >=6 Severe, >=2 Idle
 * filter idle_hours>=2
 
 tbl_geolayers(
