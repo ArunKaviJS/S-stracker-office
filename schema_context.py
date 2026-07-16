@@ -83,7 +83,8 @@ RULES:
   tbl_wifi_activity.wifiActivityId,
   tbl_wifi_claim_history.wifiClaimId
 * TIMEZONE: DB stores UTC; user queries are in MYT (UTC+08:00). Subtract 8h from MYT boundaries to get UTC. Always filter with half-open UTC ranges: col >= 'UTC_START' AND col < 'UTC_END'. Never use MONTH(), YEAR(), DATE(), DATE_FORMAT(), CONVERT_TZ() in WHERE.
-  Examples: "today"(MYT 2025-07-16)→ col>='2025-07-15 16:00:00' AND col<'2025-07-16 16:00:00' | "June 2025"→ col>='2025-05-31 16:00:00' AND col<'2025-06-30 16:00:00' | "15 Jun 2025"→ col>='2025-06-14 16:00:00' AND col<'2025-06-15 16:00:00'
+  Always determine the current date/year from the actual query time — never hardcode a year.
+  Examples (YYYY/MM/DD are resolved at query time): "today"→ col>='YYYY-MM-{D-1} 16:00:00' AND col<'YYYY-MM-DD 16:00:00' | "June {YYYY}"→ col>='YYYY-05-31 16:00:00' AND col<'YYYY-06-30 16:00:00' | "15 Jun {YYYY}"→ col>='YYYY-06-14 16:00:00' AND col<'YYYY-06-15 16:00:00'
 * MySQL ONLY_FULL_GROUP_BY is enabled.
 * Every non-aggregated selected column must appear in GROUP BY.
 * Do NOT add LIMIT for COUNT,SUM,AVG,MIN,MAX queries.
