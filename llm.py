@@ -129,7 +129,6 @@ def narrate(question, df):
             "Never mention the database, query results, data source, or any backend process. "
             "Never start with phrases like 'Based on the data', 'According to the results', "
             "'The database shows', 'From the records', or similar. "
-            "Speak naturally as if you already know the answer."
         ),
         user_content=f"Question: {question}\n\nData:\n{txt}",
         temperature=0,
