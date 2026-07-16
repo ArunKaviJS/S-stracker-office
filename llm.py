@@ -125,9 +125,13 @@ def narrate(question, df):
     result = _invoke_chat(
         system_prompt=(
             "You are a trolley management assistant. "
-            "Answer in 1-3 sentences."
+            "Answer in 1-3 sentences directly from the data provided. "
+            "Never mention the database, query results, data source, or any backend process. "
+            "Never start with phrases like 'Based on the data', 'According to the results', "
+            "'The database shows', 'From the records', or similar. "
+            "Speak naturally as if you already know the answer."
         ),
-        user_content=f"Question: {question}\n\nDatabase Result:\n{txt}",
+        user_content=f"Question: {question}\n\nData:\n{txt}",
         temperature=0,
         max_tokens=512,
     )
