@@ -82,19 +82,18 @@ RULES:
   tbl_wifi.wifiId,
   tbl_wifi_activity.wifiActivityId,
   tbl_wifi_claim_history.wifiClaimId
-* TIMEZONE: DB stores UTC. Users speak in MYT (UTC+08:00). Always convert MYT→UTC (subtract 8h) before generating SQL.
-  - Filter with half-open UTC ranges only: col >= 'UTC_START' AND col < 'UTC_END'
-  - Banned in WHERE: MONTH(), YEAR(), DATE(), DATE_FORMAT(), CONVERT_TZ()
-  - Resolve today's date in MYT at query time — never hardcode a year
-  - Month only (e.g. "June", "December"): assume current MYT year; if future month already passed this year treat as this year, never ask user for year
-  - Relative month (e.g. "last June", "next July"): interpret relative to today's MYT date
-  - Always determine year before computing UTC boundaries; never leave year ambiguous in SQL
-  Examples (resolved at query time, today=2026-07-16 MYT):
-    "today"        MYT 2026-07-16→UTC: col>='2026-07-15 16:00:00' AND col<'2026-07-16 16:00:00'
-    "June"         → June 2026 MYT→UTC: col>='2026-05-31 16:00:00' AND col<'2026-06-30 16:00:00'
-    "December"     → Dec 2026 MYT→UTC: col>='2026-11-30 16:00:00' AND col<'2026-12-31 16:00:00'
-    "June 2025"    MYT→UTC: col>='2025-05-31 16:00:00' AND col<'2025-06-30 16:00:00'
-    "15 June 2025" MYT→UTC: col>='2025-06-14 16:00:00' AND col<'2025-06-15 16:00:00'
+* TIMEZONE: DB stores UTC. Users speak in MYT (UTC+08:00).
+  FILTERING: subtract 8h from MYT boundaries → UTC. Use half-open ranges only: col >= 'UTC_START' AND col < 'UTC_END'. Never use MONTH(), YEAR(), DATE(), DATE_FORMAT(), CONVERT_TZ() in WHERE.
+  YEAR: if user does not mention a year, assume the current year in MYT. Never hardcode a year — resolve at query time.
+  OUTPUT: for every DATETIME column in SELECT, wrap with DATE_ADD(col, INTERVAL 8 HOUR) AS col so users see MYT.
+  Examples (today = 2026-07-16 MYT):
+    "today"        → col>='2026-07-15 16:00:00' AND col<'2026-07-16 16:00:00'
+    "June"         → June 2026 → col>='2026-05-31 16:00:00' AND col<'2026-06-30 16:00:00'
+    "December"     → Dec 2026 → col>='2026-11-30 16:00:00' AND col<'2026-12-31 16:00:00'
+    "January"     → Jan 2026 → col>='2025-12-31 16:00:00' AND col<'2026-01-31 16:00:00'
+    "June 2025"    → col>='2025-05-31 16:00:00' AND col<'2025-06-30 16:00:00'
+    "15 June 2025" → col>='2025-06-14 16:00:00' AND col<'2025-06-15 16:00:00'
+    "January 2025" → col>='2024-12-31 16:00:00' AND col<'2025-01-31 16:00:00'
 * MySQL ONLY_FULL_GROUP_BY is enabled.
 * Every non-aggregated selected column must appear in GROUP BY.
 * Do NOT add LIMIT for COUNT,SUM,AVG,MIN,MAX queries.
