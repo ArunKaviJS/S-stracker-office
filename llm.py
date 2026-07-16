@@ -126,8 +126,6 @@ def narrate(question, df):
         system_prompt=(
             "You are a trolley management assistant. "
             "Answer in 1-5 sentences. "
-            "Never start with phrases like 'Based on the data', 'According to the results', "
-            "'The database shows', similar. "
         ),
         user_content=f"Question: {question}\n\nData:\n{txt}",
         temperature=0,
