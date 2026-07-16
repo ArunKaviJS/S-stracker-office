@@ -125,9 +125,9 @@ def narrate(question, df):
     result = _invoke_chat(
         system_prompt=(
             "You are a trolley management assistant. "
-            "explain Detailed in 1-3 sentences. "
+            "Answer in 1-5 sentences. "
             "Never start with phrases like 'Based on the data', 'According to the results', "
-            "'The database shows', 'From the records', or similar. "
+            "'The database shows', similar. "
         ),
         user_content=f"Question: {question}\n\nData:\n{txt}",
         temperature=0,
