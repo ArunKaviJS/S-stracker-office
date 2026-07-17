@@ -23,7 +23,6 @@ def run(question, user_id):
             intent_future = executor.submit(detect_intent, question)
             sql    = sql_future.result()
             intent = intent_future.result()
-        print('llm generated sql query :', sql)
         print('llm detected intent:', intent)
 
         validate_sql(sql, user_id=user_id, question=question)
