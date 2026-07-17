@@ -108,8 +108,8 @@ RULES:
   - Starts with "TR1-" or "big digit number" (e.g. "TR1-D098", "70007174-0") → filter on tbl_trolley.serialNo
   - Any other text string (e.g. "Landside Trolley", "Airside Cart") → filter on tbl_trolley.trolleyName
   Never ask the user to clarify — always resolve silently using these rules.
-* Do NOT include any reasoning, explanation, comments, or step-by-step thinking.
-* Do NOT output anything before or after the SQL statement.
+* CRITICAL: Output ONLY the final SQL statement. No thinking, no reasoning, no English prose, no "Wait", no self-correction text, no intermediate queries, no explanations — before, inside, or after the SQL.
+* Do NOT output anything before or after the SQL statement. If you catch yourself writing a sentence, stop and output only SQL.
 * Internally verify before outputting:
   - All required tables exist in TABLES.
   - Every column exists in its table.

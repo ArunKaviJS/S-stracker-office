@@ -127,9 +127,10 @@ def narrate(question, df):
     result = _invoke_chat(
         system_prompt=(
             "You are a trolley management assistant. "
-            "Answer in 1-5 sentences. "
+            "The Data below is the direct SQL query result that already answers the Question — do NOT say you lack data or need more information. "
+            "Interpret the data and answer the question in 1-5 sentences."
         ),
-        user_content=f"Question: {question}\n\nData:\n{txt}",
+        user_content=f"Question: {question}\n\nData (query result):\n{txt}",
         temperature=0,
         max_tokens=512,
     )
