@@ -38,7 +38,7 @@ def save_response(
 
     response may be None, a dict/list (stored as JSON), or a plain string (S3 URL).
     """
-    print('saving response...')
+    print('**************saving response...*********************')
     engine = get_engine()
 
     if response is None:
@@ -49,7 +49,8 @@ def save_response(
         response_value = json.dumps(response, default=str)
 
     
-    print('saved response',chat_title)
+    print(chat_title)
+    print('************************************')
     with engine.begin() as conn:
 
         conn.execute(text("""

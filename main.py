@@ -20,15 +20,15 @@ def run(question, user_id):
     # LLM call 1 & 2 in parallel: SQL generation + intent detection
     sql = None
     try:
-        print('Generating Query and Intent')
         
         with ThreadPoolExecutor(max_workers=2) as executor:
             sql_future    = executor.submit(generate_sql, question)
             intent_future = executor.submit(detect_intent, question)
             sql    = sql_future.result()
             intent = intent_future.result()
-        print('llm detected intent:', intent)
-
+        print('***************Intent********************')
+        print( intent)
+        print('*****************************************')
         validate_sql(sql, user_id=user_id, question=question)
 
     except BlockedQueryError as e:
@@ -45,6 +45,9 @@ def run(question, user_id):
 
     try:
         df = execute_query(sql)
+        print('********executed query**********')
+        print(df)
+        print('********************************')
     except Exception as e:
         print('SQL execution error:', e)
         sql_error_result = {

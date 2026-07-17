@@ -64,7 +64,9 @@ def validate_sql(sql: str, user_id=None, question: str = None) -> None:
         raise BlockedQueryError("EMPTY_SQL")
 
     # sql = _strip_markdown(sql)
-    print(f"[sql_guard] SQL preview: {repr(sql)}")
+    print('********[sql_guard] SQL preview***************')
+    print(repr(sql))
+    print('**********************************************')
 
     if not re.match(r"(?i)^\s*SELECT\b", sql):
         print("[sql_guard] Blocked SQL — query does not start with SELECT")

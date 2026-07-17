@@ -27,12 +27,11 @@ def route(question, intent, df):
         "response": None | dict | str
       }
     """
-    print('Build the response dict using the pre-detected intent ,df')
     rows, _ = df.shape
 
     # Fallback: no data returned by query
     if rows == 0:
-        print(' no data found')
+        print(' ******no data found********')
         return {
             "intent": "no_data",
             "chatTitle": "No data found for this query",
@@ -41,8 +40,10 @@ def route(question, intent, df):
 
     # --- single_line intent ---
     if intent == "single_line":
-        print('single line intent')
+        print('*************single line intent*************')
         answer = narrate(question, df)
+        print(answer)
+        print('*********************************************')
         return {
             "intent": "single_line",
             "chatTitle": answer,
@@ -51,11 +52,14 @@ def route(question, intent, df):
 
     # --- summary intent ---
     if intent == "summary":
-    
+        print('*******************generated summary data***************')
         summary_data = generate_summary(question, df.to_string(index=False))
-        print('generated summary data',summary_data)
+        print(summary_data)
+        print('********************************************************')
+        print('*****chat title******')
         chat_title = summary_data.pop("chatTitle", question)
-        print('chat title',chat_title)
+        print(chat_title)
+        print('*********************')
         return {
             "intent": "summary",
             "chatTitle": chat_title,
@@ -66,7 +70,7 @@ def route(question, intent, df):
     chat_title = f"{rows} results found in your query"
 
     if rows <= PAGE_SIZE:
-        print('small table')
+        print('***********small table************')
         return {
             "intent": "small_table",
             "chatTitle": chat_title,
@@ -74,7 +78,7 @@ def route(question, intent, df):
         }
 
     if rows <= S3_THRESHOLD:
-        print('large table')
+        print('************large table**********')
         return {
             "intent": "large_table",
             "chatTitle": chat_title,

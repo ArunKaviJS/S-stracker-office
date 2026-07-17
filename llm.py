@@ -62,7 +62,6 @@ def _call_llm_for_sql(question):
 
 def generate_sql(question):
     """Generate a MySQL query via Claude Sonnet on AWS Bedrock."""
-    print('***** Generating SQL via Claude Bedrock *****')
     sql = _call_llm_for_sql(question)
     # print(f'[generate_sql] SQL: {sql}')
     return sql
@@ -93,7 +92,6 @@ def _invoke_chat(system_prompt, user_content, temperature=0, max_tokens=512):
 
 def detect_intent(question):
     """Classify question into single_line, table, or summary."""
-    print('******** caling detecting intent********')
 
     intent = _invoke_chat(
         system_prompt=(
@@ -119,7 +117,6 @@ def detect_intent(question):
 
 def narrate(question, df):
     """Single LLM call: 1-3 sentence answer for single_line intent."""
-    print('**** calling single_line llm for answer****')
     txt = df.to_string(index=False)
 
     result = _invoke_chat(
@@ -148,7 +145,6 @@ def generate_summary(question, df_text):
         ]
       }
     """
-    print('******* calling summary llm *******')
 
     raw = _invoke_chat(
         system_prompt=(
