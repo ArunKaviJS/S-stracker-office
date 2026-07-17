@@ -41,15 +41,25 @@ def run(question, user_id):
         return blocked_result
 
 
-    # Main flow
+    # Main flow — retry up to 3 times (regenerate SQL on each failure)
+    df = None
+    last_error = None
+    for attempt in range(1, 4):
+        try:
+            print(f'********executed query (attempt {attempt})**********')
+            df = execute_query(sql)
+            print(df)
+            print('********************************')
+            break  # success — exit retry loop
+        except Exception as e:
+            last_error = e
+            print(f'SQL execution error (attempt {attempt}):', e)
+            if attempt < 3:
+                print(f'Regenerating SQL for attempt {attempt + 1}...')
+                sql = generate_sql(question)
+                validate_sql(sql, user_id=user_id, question=question)
 
-    try:
-        print('********executed query**********')
-        df = execute_query(sql)
-        print(df)
-        print('********************************')
-    except Exception as e:
-        print('SQL execution error:', e)
+    if df is None:
         sql_error_result = {
             "intent": "sql_error",
             "chatTitle": "I could not interpret that question",
