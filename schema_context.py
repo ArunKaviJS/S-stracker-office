@@ -174,14 +174,6 @@ tbl_device_data(
   batteryFault     VARCHAR(255)
 )
 
-BATTERY_DRAIN_LOGIC:
-* status=1
-* sort trolleyId,timestamp ASC
-* LAG(batteryLevel) OVER(PARTITION BY trolleyId ORDER BY timestamp)
-* battery_diff=batteryLevel-prev_battery
-* battery_diff>20 => new charging session
-* drain=session_start_battery-session_end_battery
-
 tbl_device_history(
   historyId        INT(11) PK,
   deviceEndpoint   VARCHAR(255),
