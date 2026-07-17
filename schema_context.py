@@ -97,6 +97,9 @@ RULES:
 * MySQL ONLY_FULL_GROUP_BY is enabled.
 * Every non-aggregated selected column must appear in GROUP BY.
 * Do NOT add LIMIT for COUNT,SUM,AVG,MIN,MAX queries.
+* LATEST / CURRENT: When the user asks for the "latest", "current", "most recent", or "last" record of something, use a subquery with MAX(createdOn) — or MAX of the most relevant DATETIME column (e.g. timestamp, modifiedOn, lastUpdated) — to filter to the single most-recent row. Example pattern:
+  WHERE t.createdOn = (SELECT MAX(t2.createdOn) FROM <same_table> t2 WHERE t2.<key_col> = t.<key_col>)
+  Never use LIMIT 1 ORDER BY as a substitute; the MAX subquery approach is required.
 * Default filter: status=1 unless user explicitly requests otherwise.
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
 * Output must start with SELECT.
