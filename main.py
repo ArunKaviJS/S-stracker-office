@@ -9,6 +9,10 @@ from response_store import create_response_table, save_response
 
 
 def run(question, user_id):
+    
+    print('***********Question**********')
+    print(question)
+    print('*****************************')
 
     create_response_table()
 

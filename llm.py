@@ -64,7 +64,7 @@ def generate_sql(question):
     """Generate a MySQL query via Claude Sonnet on AWS Bedrock."""
     print('***** Generating SQL via Claude Bedrock *****')
     sql = _call_llm_for_sql(question)
-    print(f'[generate_sql] SQL: {sql}')
+    # print(f'[generate_sql] SQL: {sql}')
     return sql
 
 
