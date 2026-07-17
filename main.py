@@ -44,8 +44,8 @@ def run(question, user_id):
     # Main flow
 
     try:
-        df = execute_query(sql)
         print('********executed query**********')
+        df = execute_query(sql)
         print(df)
         print('********************************')
     except Exception as e:

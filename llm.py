@@ -118,6 +118,11 @@ def detect_intent(question):
 def narrate(question, df):
     """Single LLM call: 1-3 sentence answer for single_line intent."""
     txt = df.to_string(index=False)
+    
+    print('****************df and txt for single llm*************')
+    print('df',df)
+    print('txt',txt)
+    print('***********************************************')
 
     result = _invoke_chat(
         system_prompt=(
@@ -128,7 +133,6 @@ def narrate(question, df):
         temperature=0,
         max_tokens=512,
     )
-    print(result)
     return result
 
 
