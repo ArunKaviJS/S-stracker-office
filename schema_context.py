@@ -103,6 +103,7 @@ RULES:
 * Default filter: status=1 unless user explicitly requests otherwise.
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
 * Output must start with SELECT.
+* Generate exactly ONE SQL statement per question — never output multiple queries separated by semicolons, newlines, or any delimiter.
 * When the user refers to a trolley without specifying whether it is an ID, name, or serial number, infer the correct column from the value format:
   - Pure integer (e.g. "trolley 2", "trolley 105") → filter on tbl_trolley.trolleyId
   - Starts with "TR1-" or "big digit number" (e.g. "TR1-D098", "70007174-0") → filter on tbl_trolley.serialNo
@@ -150,7 +151,7 @@ tbl_device(
 tbl_device_claim_history(
   deviceClaimId    INT(11) PK,
   deviceId         INT(11),
-  warrentyType     VARCHAR(100),
+  warrentyType     VARCHAR(100), --'Electronic Board', 'Casing Set', 'Entire Tracker'
   doneBy           INT(11),
   claimNotes       VARCHAR(500),
   resolveNotes     VARCHAR(500),
@@ -208,7 +209,7 @@ tbl_geolayers(
 tbl_geozones(
   geozoneId        INT(11) PK,
   geozoneName      VARCHAR(100),
-  tag              VARCHAR(100),
+  tag              VARCHAR(100), --'MTB', 'STCP', 'USIM'
   tagId            INT(11),
   geolayerId       INT(11),
   boundaryColor    VARCHAR(50),
@@ -261,7 +262,7 @@ tbl_trolley(
 tbl_trolley_maintenance(
   maintenanceId    INT(11) PK,
   type             ENUM('major','minor'),
-  reason           VARCHAR(500),
+  reason           VARCHAR(500),  --'Oiling & Greasing', 'Broken & Needs Welding','Parts Replacement','Accident','testing'
   completedNotes   VARCHAR(500),
   doneBy           INT(11),
   image1           VARCHAR(500),
@@ -274,8 +275,8 @@ tbl_trolley_maintenance(
 
 tbl_alerts(
   alertId          INT(11) PK,
-  alertName        VARCHAR(100),
-  key              VARCHAR(100),
+  alertName        VARCHAR(100), --'SCATTERED TROLLEY', 'TROLLEY OUT OF ZONE', 'BATTERY ALERT'
+  key              VARCHAR(100), --eg., ST-221225-26023
   trolleyId        INT(11),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
@@ -287,7 +288,7 @@ tbl_alerts(
 tbl_alerts_history(
   historyId        INT(11) PK,
   alertId          INT(11),
-  title            VARCHAR(100),
+  title            VARCHAR(100), --'Alert Triggered', 'Alert Resolved', 'Assignee Added'
   notes            VARCHAR(500),
   doneBy           INT(11),
   createdOn        DATETIME,
