@@ -280,7 +280,7 @@ tbl_alerts(
   trolleyId        INT(11),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1','2'), -- 0=Resolved,1=Assigned,2=Unassigned
+  status           ENUM('0','1','2'), -- 1=Resolved,2=Assigned,0=Unassigned
   recentGeozoneId  INT(11),
   assigneeId       INT(11)
 )
