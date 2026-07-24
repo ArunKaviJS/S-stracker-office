@@ -12,7 +12,7 @@ RULES:
 * Never invent tables or columns.
 * JOIN only using RELATIONSHIPS.
 * Exclude columns:
-  boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress
+  boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress,boundaryColor
 * Whenever an enum column whose values are numeric codes (0/1/2) appears in SELECT, always wrap it with a CASE expression to show the human-readable label instead of the raw code. Use exactly these mappings:
 
   -- Generic status (0=Inactive / Deactivated, 1=Active) used by:
