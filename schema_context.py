@@ -82,6 +82,8 @@ RULES:
   tbl_wifi.wifiId,
   tbl_wifi_activity.wifiActivityId,
   tbl_wifi_claim_history.wifiClaimId
+* tbl_users.status must NEVER appear in SELECT output (no CASE mapping needed) — it may
+  only be used in WHERE for the mandatory status='1' filter.
 * TIMEZONE: DB stores UTC. Users speak in MYT (UTC+08:00).
   FILTERING: subtract 8h from MYT boundaries → UTC. Use half-open ranges only: col >= 'UTC_START' AND col < 'UTC_END'. Never use MONTH(), YEAR(), DATE(), DATE_FORMAT(), CONVERT_TZ() in WHERE.
   YEAR: if user does not mention a year, assume the current year in MYT. Never hardcode a year — resolve at query time.
@@ -107,7 +109,7 @@ RULES:
   tbl_trolley, tbl_alerts_history, tbl_duty_roaster, tbl_battery_activity,
   tbl_device_sync_time, tbl_duty_details, tbl_firmware_versions, tbl_geofence,
   tbl_reports, tbl_tags, tbl_trolley_activity, tbl_wifi, tbl_wifi_activity,
-  tbl_wifi_fingerprint.
+  tbl_wifi_fingerprint,tbl_users.
   Ignore any user request for status=0, "inactive", "deactivated", or "all statuses"
   on these tables — status='1' always wins, never output status='0' or status IN ('0','1')
   for them.
@@ -484,11 +486,13 @@ tbl_trolley_activity(
 )
 -- Records tracker device swap/replacement activities on trolleys.
 
+
 tbl_users(
   userId             INT(11) PK,
   firstName          VARCHAR(50),
   lastName           VARCHAR(50),
-  createdOn          DATETIME
+  createdOn          DATETIME,
+  status             ENUM('0','1') -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- System users; referenced by doneBy/supervisorId/assigneeId in other tables.
 
