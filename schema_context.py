@@ -15,7 +15,7 @@ RULES:
   boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress,boundaryColor
 * Whenever an enum column whose values are numeric codes (0/1/2) appears in SELECT, always wrap it with a CASE expression to show the human-readable label instead of the raw code. Use exactly these mappings:
 
-  -- Generic status (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active) used by:
+  -- Generic status (0=Inactive / Deactivated, 1=Active) used by:
   --   tbl_battery.status, tbl_device_data.status, tbl_device_history.status,
   --   tbl_geolayers.status, tbl_geozones.status, tbl_trolley.status,
   --   tbl_alerts_history.status, tbl_duty_roaster.status,
@@ -100,13 +100,20 @@ RULES:
 * LATEST / CURRENT: When the user asks for the "latest", "current", "most recent", or "last" record of something, use a subquery with MAX(createdOn) — or MAX of the most relevant DATETIME column (e.g. timestamp, modifiedOn, lastUpdated) — to filter to the single most-recent row. Example pattern:
   WHERE t.createdOn = (SELECT MAX(t2.createdOn) FROM <same_table> t2 WHERE t2.<key_col> = t.<key_col>)
   Never use LIMIT 1 ORDER BY as a substitute; the MAX subquery approach is required.
-* HARD FILTER (soft-delete, non-negotiable): tbl_battery, tbl_device_data, tbl_device_history,
-  tbl_geolayers, tbl_geozones, tbl_trolley, tbl_alerts_history, tbl_duty_roaster,
-  tbl_battery_activity, tbl_device_sync_time, tbl_duty_details, tbl_firmware_versions,
-  tbl_geofence, tbl_reports, tbl_tags, tbl_trolley_activity, tbl_wifi, tbl_wifi_activity,
-  tbl_wifi_fingerprint — status is a soft-delete flag, NOT a queryable state. ALWAYS add
-  status = '1' in WHERE for these tables in every query, no matter what the user asks
-  Never output status = '0' or status IN ('0','1') for these tables.
+* status=1 filter (mandatory, always, no exceptions): For these tables, status is a
+  soft-delete flag, not a real-world state — ALWAYS add status = '1' to WHERE, on every
+  query, regardless of what the user asks:
+  tbl_battery, tbl_device_data, tbl_device_history, tbl_geolayers, tbl_geozones,
+  tbl_trolley, tbl_alerts_history, tbl_duty_roaster, tbl_battery_activity,
+  tbl_device_sync_time, tbl_duty_details, tbl_firmware_versions, tbl_geofence,
+  tbl_reports, tbl_tags, tbl_trolley_activity, tbl_wifi, tbl_wifi_activity,
+  tbl_wifi_fingerprint.
+  Ignore any user request for status=0, "inactive", "deactivated", or "all statuses"
+  on these tables — status='1' always wins, never output status='0' or status IN ('0','1')
+  for them.
+* Default filter for all other tables (3-value status columns: claim history,
+  maintenance, alerts, nest, notifications, cleaning_history): status=1 unless user
+  explicitly requests otherwise.
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
 * Output must start with SELECT.
 * Generate exactly ONE SQL statement per question — never output multiple queries separated by semicolons, newlines, or any delimiter.
@@ -122,6 +129,7 @@ RULES:
   - Every column exists in its table.
   - All joins exist in RELATIONSHIPS.
   - GROUP BY includes every non-aggregated SELECT column.
+  - For soft-delete tables listed above, WHERE includes status='1'.
   If verification fails, correct and retry silently — never expose the reasoning.
 
 TABLES
@@ -134,7 +142,7 @@ tbl_battery(
   warrantyDuration ENUM('12 months','18 months','24 months'),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1') -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status           ENUM('0','1') -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 
 tbl_device(
@@ -173,7 +181,7 @@ tbl_device_data(
   firmwareVersion  VARCHAR(100),
   momentDetection  VARCHAR(100),
   timestamp        DATETIME,
-  status           ENUM('0','1'), -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   intervalTimeset  INT(11),
   GPSLatitude      DOUBLE,
   GPSLongitude     DOUBLE,
@@ -194,7 +202,7 @@ tbl_device_history(
   geolayerId       INT(11),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   nestId           INT(11),
   locationSource   VARCHAR(255),
   address          VARCHAR(255)
@@ -208,7 +216,7 @@ tbl_geolayers(
   floorNo          VARCHAR(100),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   boundaryColor    VARCHAR(50)
 )
 
@@ -221,7 +229,7 @@ tbl_geozones(
   boundaryColor    VARCHAR(50),
   createdOn        DATETIME,
   modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   type             ENUM('general','cleaning','maintenance'),
   noOfTrolleys     INT(11)
 )
@@ -246,7 +254,7 @@ tbl_trolley(
   deviceId             INT(11),
   createdOn            DATETIME,
   modifiedOn           DATETIME,
-  status               ENUM('0','1'), -- 0=Inactive, 1=Active ,
+  status               ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   type                 ENUM('landside','airside'),
   maintenanceStatus    ENUM('major','minor','no maintenance'),
   lastCleaned          DATETIME,
@@ -298,7 +306,7 @@ tbl_alerts_history(
   notes            VARCHAR(500),
   doneBy           INT(11),
   createdOn        DATETIME,
-  status           ENUM('0','1'),  --(0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status           ENUM('0','1'),  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   id               INT(11),
   type             VARCHAR(50)
 )
@@ -310,7 +318,7 @@ tbl_duty_roster(
   totalWorkers  INT(11),
   createdOn     DATETIME,
   modifiedOn    DATETIME,
-  status        ENUM('0','1'),  --(0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status        ENUM('0','1'),  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   shiftDate     DATETIME
 )
 
@@ -321,9 +329,9 @@ tbl_battery_activity(
   notes              VARCHAR(200),
   updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Battery Pack Created"]
   createdOn          DATETIME,
-  status             ENUM('0','1')  --(0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
--- Tracks every change/action made on a battery pack. status=1 is Active.
+-- Tracks every change/action made on a battery pack.
 
 tbl_battery_claim_history(
   batteryClaimId     INT(11) PK,
@@ -362,7 +370,7 @@ tbl_device_activity(
 tbl_device_sync_time(
   id                 INT(11) PK,
   createdOn          DATETIME,
-  status             ENUM('0','1'),  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1'),  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   batteryLife        VARCHAR(100),  -- estimated battery life string e.g. "3 days 19 hours"
   interval           INT(11)        -- sync interval in seconds e.g. 300, 900
 )
@@ -378,7 +386,7 @@ tbl_duty_details(
   workersNo          INT(11),       -- number of workers assigned
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- Duty assignments linking a team to a roster shift with headcount details.
 
@@ -399,7 +407,7 @@ tbl_firmware_versions(
   doneBy             INT(11),       -- FK -> tbl_users.userId
   document           VARCHAR(500),  -- S3 URL to firmware file
   createdOn          DATETIME,
-  status             ENUM('0','1')  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- Registry of available firmware versions that can be pushed via OTA.
 
@@ -407,7 +415,7 @@ tbl_geofence(
   id                 INT(11) PK,
   name               VARCHAR(255),
   boundary           POLYGON,       -- excluded from SELECT per rules
-  status             ENUM('0','1')  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- Defines named geofence boundaries for tracking out-of-fence events.
 
@@ -451,7 +459,7 @@ tbl_reports(
   doneBy             INT(11),       -- FK -> tbl_users.userId
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1'), -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   reportStatus       ENUM('processing','failed','download','unavailable','null')
 )
 -- Records of generated reports for trolley, duty roster, and alert modules.
@@ -461,7 +469,7 @@ tbl_tags(
   tag                VARCHAR(100),  -- e.g. "MTB", "STCP", "ALPS", "USIM"
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- Lookup table for location/area tags used in geozones and duty assignments.
 
@@ -472,7 +480,7 @@ tbl_trolley_activity(
   trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
   doneBy             INT(11),       -- FK -> tbl_users.userId
   createdOn          DATETIME,
-  status             ENUM('0','1')  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- Records tracker device swap/replacement activities on trolleys.
 
@@ -492,7 +500,7 @@ tbl_wifi(
   warrantyDuration   ENUM('12 months','18 months','24 months'),
   createdOn          DATETIME,
   modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- Registry of WiFi beacon hardware units with warranty tracking.
 
@@ -503,7 +511,7 @@ tbl_wifi_activity(
   notes              VARCHAR(200),
   updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Wifi Beacon Created"]
   createdOn          DATETIME,
-  status             ENUM('0','1')  -- (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
 -- Audit log of changes/actions performed on WiFi beacons.
 
@@ -524,7 +532,7 @@ tbl_wifi_fingerprint(
   fingerprintId      INT(11) PK,
   latitude           DOUBLE,
   longitude          DOUBLE,
-  status             ENUM('0','1'),  (0=Inactive / Deactivated [SOFT-DELETED — treat as non-existent], 1=Active),
+  status             ENUM('0','1'),  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
   wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
   geolayerId         INT(11),       -- FK -> tbl_geolayers.geolayerId
   createdOn          DATETIME,
@@ -615,4 +623,3 @@ wifi_activity,wifi_log -> tbl_wifi_activity
 wifi_claim -> tbl_wifi_claim_history
 wifi_fingerprint,indoor_positioning -> tbl_wifi_fingerprint
 """
-
