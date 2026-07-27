@@ -107,8 +107,6 @@ RULES:
   tbl_wifi_fingerprint — status is a soft-delete flag, NOT a queryable state. ALWAYS add
   status = '1' in WHERE for these tables in every query, no matter what the user asks
   Never output status = '0' or status IN ('0','1') for these tables.
-* Default filter: status=1 unless user explicitly requests otherwise — EXCEPT for the
-  soft-delete table list above, where status='1' is forced always, with no exceptions.
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
 * Output must start with SELECT.
 * Generate exactly ONE SQL statement per question — never output multiple queries separated by semicolons, newlines, or any delimiter.
