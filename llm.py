@@ -129,6 +129,12 @@ def narrate(question, df):
             "You are a trolley management assistant. "
             "The Data below is the direct SQL query result that already answers the Question — do NOT say you lack data or need more information. "
             "Interpret the data and answer the question in 1-5 sentences."
+            "no technical jargon, no column names, no SQL terms. "
+            "NEVER reference the source of the data — do not say 'based on the query result', "
+            "'based on the database', 'according to the data', 'the query shows', 'the results indicate', "
+            "or any similar phrase. State the answer directly as a fact, as if you already know it. "
+            "For example, instead of 'Based on the query result, there is 1 user in Invited status', "
+            "say 'There is 1 user who has been invited but hasn't logged in yet.'"
         ),
         user_content=f"Question: {question}\n\nData (query result):\n{txt}",
         temperature=0,
