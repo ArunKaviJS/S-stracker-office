@@ -34,7 +34,7 @@ RULES:
   CASE <col> WHEN '0' THEN 'Unassigned' WHEN '1' THEN 'Resolved' WHEN '2' THEN 'Assigned' END AS <col>
 
   -- tbl_alerts.status
-  CASE <col> WHEN '0' THEN 'Unassigned' WHEN '1' THEN 'Assigned' WHEN '2' THEN 'Resolved' END AS <col>
+  CASE <col> WHEN '0' THEN 'Resolved' WHEN '1' THEN 'Assigned' WHEN '2' THEN 'Unassigned' END AS <col>
 
   -- tbl_nest.status
   CASE <col> WHEN '1' THEN 'Active' WHEN '2' THEN 'Inactive / Deactivated' END AS <col>
