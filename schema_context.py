@@ -57,7 +57,7 @@ RULES:
   -- Enum columns whose values are already human-readable — use AS-IS (no CASE needed):
   --   warrantyDuration, type (trolley/geozone/wifi_fingerprint/alerts_history),
   --   maintenanceStatus, locationSource, reportModuleName, reportStatus, updateStatus,
-  --   tbl_device.status ('registered'/'deregistered')
+  --   tbl_device.status ('registered'/'deregistered'), tbl_users.activeStatus ('invite'/'active')
 
 * Never SELECT these index-only primary key columns (they may be used in JOINs/WHERE but must NOT appear in the SELECT output):
   tbl_device_claim_history.deviceClaimId,
@@ -491,6 +491,7 @@ tbl_users(
   userId             INT(11) PK,
   firstName          VARCHAR(50),
   lastName           VARCHAR(50),
+  activeStatus       ENUM('invite','active') -- human-readable; use AS-IS, no CASE needed)
   createdOn          DATETIME,
   status             ENUM('0','1') -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
