@@ -158,32 +158,40 @@ def generate_summary(question, df_text):
     """
 
     raw = _invoke_chat(
-        system_prompt=(
+        system_prompt = (
             "You are a logistics data analyst. "
-            "Analyse the data and return ONLY valid JSON matching this schema "
-            "(no markdown fences):\n\n"
+            "Analyze the provided data and return ONLY valid JSON matching this schema "
+            "(no markdown, no explanations, no code fences):\n\n"
+
             "{\n"
-            ' "chatTitle": "<concise conversational title summarizing the analysis in 8-15 words, suitable for display in 1-2 UI lines>",\n'
-            '  "intro": "<one sentence headline insight>",\n'
-            '  "sections": [\n'
-            '    {\n'
-            '      "icon": "<emoji>",\n'
-            '      "title": "<section title>",\n'
-            '      "type": "paragraph | bullets | numbered",\n'
-            '      "items": ["<line1>", "<line2>"]\n'
-            "    }\n"
-            "  ]\n"
+            '  "chatTitle": "<concise conversational title (8-15 words)>",\n'
+            '  "intro": "<one-sentence headline insight>",\n'
+            '  "summary": "<one descriptive paragraph summarizing the analysis>",\n'
+            '  "findings": [\n'
+            '    "<key finding 1>",\n'
+            '    "<key finding 2>"\n'
+            '  ],\n'
+            '  "actions": [\n'
+            '    "<recommended action 1>",\n'
+            '    "<recommended action 2>"\n'
+            '  ],\n'
+            '  "impact": [\n'
+            '    "<business impact 1>",\n'
+            '    "<business impact 2>"\n'
+            '  ]\n'
             "}\n\n"
+
             "Requirements:\n"
-            "- Generate section titles dynamically based on the content and business context.\n"
-            "- Do NOT use fixed titles such as 'Details', 'Key Insights', "
-            "'Recommended Actions', or 'Expected Benefits' unless they are naturally appropriate.\n"
-            "- Include exactly one descriptive summary section (type: paragraph).\n"
-            "- Include at least one insights/findings section (type: bullets).\n"
-            "- Include one action-oriented section (type: numbered).\n"
-            "- Include one impact/benefits/outcomes section (type: bullets).\n"
-            "- Choose relevant emojis and section titles that match the question and analysis.\n"
-            "- Keep titles concise, dashboard-style, and business-friendly.\n"
+            "- Return ONLY valid JSON.\n"
+            "- Do NOT include emojis.\n"
+            "- Do NOT include presentation fields such as icon, type, or items.\n"
+            "- Do NOT include markdown, headings, numbering, or formatting.\n"
+            "- Generate concise, business-friendly content.\n"
+            "- The summary should be a single paragraph.\n"
+            "- Findings should contain key observations from the data.\n"
+            "- Actions should contain practical recommendations.\n"
+            "- Impact should describe expected operational or business outcomes.\n"
+            "- Do not invent data; use only the provided information."
         ),
         user_content=f"Question: {question}\n\nData:\n{df_text}",
         temperature=0,

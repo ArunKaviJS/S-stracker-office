@@ -86,6 +86,8 @@ RULES:
   tbl_device.fenceId,
   tbl_device.isOutOfFence,
   tbl_device.status,
+  tbl_users.userId,
+  tbl_users.lastName 
 * tbl_users.status must NEVER appear in SELECT output (no CASE mapping needed) — it may
   only be used in WHERE for the mandatory status='1' filter.
 * TIMEZONE: DB stores UTC. Users speak in MYT (UTC+08:00).
