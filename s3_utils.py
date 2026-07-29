@@ -2,9 +2,14 @@ import boto3
 import uuid
 from io import BytesIO, StringIO
 
-from config import S3_BUCKET_NAME
+from config import S3_BUCKET_NAME,AWS_ACCESS_KEY,AWS_SECRET_KEY
 
-s3 = boto3.client("s3")
+s3 = boto3.client("s3",region_name="ap-southeast-1",
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    # Optional: Only if you're using temporary credentials
+    # aws_session_token="YOUR_SESSION_TOKEN"
+)
 
 BUCKET_NAME = S3_BUCKET_NAME
 

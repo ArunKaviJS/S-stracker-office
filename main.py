@@ -90,7 +90,8 @@ def run(question, user_id):
 
 
 if __name__ == "__main__":
-    question = input("delete the Table tbl_chat_response").strip()
-    user_id  = input("UserId: 01 ").strip()
-    result   = run(question, user_id)
+    question = input("Question: ").strip()
+    user_id = input("User ID: ").strip()
+
+    result = run(question, user_id)
     print(json.dumps(result, indent=2, default=str))

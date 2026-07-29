@@ -21,10 +21,8 @@ RULES:
   --   tbl_alerts_history.status, tbl_duty_roaster.status,
   --   tbl_battery_activity.status, tbl_cleaning_history (not 0/1/2 here — see below),
   --   tbl_device_activity (no status), tbl_device_sync_time.status,
-  --   tbl_duty_details.status, tbl_firmware_versions.status,
-  --   tbl_geofence.status, tbl_reports.status, tbl_tags.status,
-  --   tbl_trolley_activity.status, tbl_wifi.status, tbl_wifi_activity.status,
-  --   tbl_wifi_fingerprint.status
+  --   tbl_duty_details.status, tbl_geofence.status, tbl_tags.status,
+  --   tbl_trolley_activity.status, tbl_wifi.status, tbl_wifi_activity.status
   CASE <col> WHEN '0' THEN 'Inactive / Deactivated' WHEN '1' THEN 'Active' END AS <col>
 
   -- tbl_device_claim_history.status / tbl_battery_claim_history.status / tbl_wifi_claim_history.status
@@ -55,9 +53,20 @@ RULES:
   CASE <col> WHEN 'day' THEN 'Day Shift' WHEN 'night' THEN 'Night Shift' END AS <col>
 
   -- Enum columns whose values are already human-readable — use AS-IS (no CASE needed):
-  --   warrantyDuration, type (trolley/geozone/wifi_fingerprint/alerts_history),
-  --   maintenanceStatus, locationSource, reportModuleName, reportStatus, updateStatus,
+  --   warrantyDuration, type (trolley/geozone/alerts_history),
+  --   maintenanceStatus, locationSource, updateStatus,
   --   tbl_device.status ('registered'/'deregistered'), tbl_users.activeStatus ('invite'/'active')
+
+* DISPLAY-NAME RESOLUTION (entity references must show the human-readable name, never the raw ID):
+  - Trolley: when the user asks about a trolley, SELECT tbl_trolley.serialNo and tbl_trolley.trolleyName only. Use tbl_trolley.trolleyId only for JOIN/WHERE — never SELECT trolleyId.
+  - Device: when the user asks about a device, SELECT tbl_device.deviceEndpoint. Use tbl_device.deviceId only for JOIN/WHERE — never SELECT deviceId.
+  - Geozone: when the user asks about a geozone, SELECT tbl_geozones.geozoneName. Use tbl_geozones.geozoneId only for JOIN/WHERE — never SELECT geozoneId.
+  - Geolayer: when the user asks about a geolayer, SELECT tbl_geolayers.geolayerName. Use tbl_geolayers.geolayerId only for JOIN/WHERE — never SELECT geolayerId.
+  - Nest: when the user asks about a nest, SELECT tbl_nest.nestName. Use tbl_nest.nestId only for JOIN/WHERE — never SELECT nestId.
+  - Users: when the user asks about a user, SELECT tbl_users.firstName. Use tbl_users.userId only for JOIN/WHERE — never SELECT userId.
+  - Geofence: when the user asks about a geofence, SELECT tbl_geofence.name. Use tbl_geofence.id only for JOIN/WHERE — never SELECT id.
+  - Wifi: when the user asks about wifi, SELECT tbl_wifi.wifiName. Use tbl_wifi.wifiId only for JOIN/WHERE — never SELECT wifiId.
+  - Tags: when the user asks about tags, SELECT tbl_tags.tag. Use tbl_tags.tagId only for JOIN/WHERE — never SELECT tagId.
 
 * Never SELECT these index-only primary key columns (they may be used in JOINs/WHERE but must NOT appear in the SELECT output):
   tbl_device_claim_history.deviceClaimId,
@@ -71,23 +80,31 @@ RULES:
   tbl_cleaning_history.cleaningId,
   tbl_device_activity.deviceActivityId,
   tbl_duty_details.dutyId,
-  tbl_firmware_trigger_history.id,
-  tbl_firmware_versions.versionId,
   tbl_nest_activity_history.nestHistoryId,
   tbl_notifications.id,
   tbl_device_sync_time.id,
-  tbl_reports.reportId,
   tbl_tags.tagId,
   tbl_trolley_activity.activityId,
   tbl_wifi.wifiId,
   tbl_wifi_activity.wifiActivityId,
-  tbl_wifi_claim_history.wifiClaimId
+  tbl_wifi_claim_history.wifiClaimId,
+  tbl_device_version_history.historyId,
+  tbl_user_activity.activityId,
+  tbl_trolley.trolleyId,
+  tbl_device.deviceId,
+  tbl_geozones.geozoneId,
+  tbl_geolayers.geolayerId,
+  tbl_nest.nestId,
+  tbl_users.userId,
+  tbl_geofence.id,
   tbl_device.registrationDate
   tbl_device.fenceId,
   tbl_device.isOutOfFence,
   tbl_device.status,
-  tbl_users.userId,
-  tbl_users.lastName 
+* Also never SELECT these columns (audit/soft-delete flags kept out of output, may still be used in WHERE for the mandatory status filter):
+  tbl_users.status, tbl_wifi_activity.status, tbl_wifi.status, tbl_trolley_activity.status,
+  tbl_tags.status, tbl_geofence.status, tbl_duty_details.status, tbl_battery_activity.status,
+  tbl_user_activity.status
 * tbl_users.status must NEVER appear in SELECT output (no CASE mapping needed) — it may
   only be used in WHERE for the mandatory status='1' filter.
 * TIMEZONE: DB stores UTC. Users speak in MYT (UTC+08:00).
@@ -108,14 +125,28 @@ RULES:
 * LATEST / CURRENT: When the user asks for the "latest", "current", "most recent", or "last" record of something, use a subquery with MAX(createdOn) — or MAX of the most relevant DATETIME column (e.g. timestamp, modifiedOn, lastUpdated) — to filter to the single most-recent row. Example pattern:
   WHERE t.createdOn = (SELECT MAX(t2.createdOn) FROM <same_table> t2 WHERE t2.<key_col> = t.<key_col>)
   Never use LIMIT 1 ORDER BY as a substitute; the MAX subquery approach is required.
+* CLAIM HISTORY DISAMBIGUATION: There is no single generic "warranty_claim_history"
+  table. There are exactly three, each scoped to one asset type — never mix them up
+  or use the wrong one:
+  - tbl_device_claim_history  → tracker DEVICE hardware claims only (join on deviceId)
+  - tbl_battery_claim_history → BATTERY claims only (join on batteryId)
+  - tbl_wifi_claim_history    → WIFI beacon claims only (join on wifiId)
+  Pick the table based on the asset the user names (device/tracker vs battery vs
+  wifi/beacon); if unclear, prefer tbl_device_claim_history only when "device" or
+  "tracker" is explicitly mentioned.
+* FIRMWARE: Whenever the question relates to firmware (e.g. firmware version, firmware
+  deployment/history, tbl_device_version_history), always SELECT DISTINCT deviceEndpoint
+  — tbl_device_version_history.deviceEndpoint contains duplicate values, so deduplicate
+  with DISTINCT (or COUNT(DISTINCT deviceEndpoint) for counts) whenever it appears in
+  SELECT.
 * status=1 filter (mandatory, always, no exceptions): For these tables, status is a
   soft-delete flag, not a real-world state — ALWAYS add status = '1' to WHERE, on every
   query, regardless of what the user asks:
   tbl_battery, tbl_device_data, tbl_device_history, tbl_geolayers, tbl_geozones,
   tbl_trolley, tbl_alerts_history, tbl_duty_roaster, tbl_battery_activity,
-  tbl_device_sync_time, tbl_duty_details, tbl_firmware_versions, tbl_geofence,
-  tbl_reports, tbl_tags, tbl_trolley_activity, tbl_wifi, tbl_wifi_activity,
-  tbl_wifi_fingerprint,tbl_users.
+  tbl_device_sync_time, tbl_duty_details, tbl_geofence,
+  tbl_tags, tbl_trolley_activity, tbl_wifi, tbl_wifi_activity, tbl_users,
+  tbl_device_version_history, tbl_user_activity.
   Ignore any user request for status=0, "inactive", "deactivated", or "all statuses"
   on these tables — status='1' always wins, never output status='0' or status IN ('0','1')
   for them.
@@ -138,123 +169,39 @@ RULES:
   - All joins exist in RELATIONSHIPS.
   - GROUP BY includes every non-aggregated SELECT column.
   - For soft-delete tables listed above, WHERE includes status='1'.
+  - Entity references (trolley/device/geozone/geolayer/nest/user/geofence/wifi/tags) use their DISPLAY-NAME RESOLUTION column in SELECT, not the raw ID.
+  - For firmware-related questions, deviceEndpoint in SELECT uses DISTINCT.
+  - For claim/warranty questions, the correct asset-specific claim_history table (device/battery/wifi) was used, not confused with another.
   If verification fails, correct and retry silently — never expose the reasoning.
 
 TABLES
 
-tbl_battery(
-  batteryId        INT(11) PK,
-  serialNo         VARCHAR(100),
-  warrantyStartDate DATETIME,
-  warrantyExpiryDate DATETIME,
-  warrantyDuration ENUM('12 months','18 months','24 months'),
-  createdOn        DATETIME,
-  modifiedOn       DATETIME,
-  status           ENUM('0','1') -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+-- Core user registry. Stores all registered users.
+tbl_users(
+  userId             INT(11) PK,
+  firstName          VARCHAR(50),
+  lastName           VARCHAR(50),
+  activeStatus       ENUM('invite','active') -- human-readable; use AS-IS, no CASE needed)
+  createdOn          DATETIME,
+  status             ENUM('0','1') -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+)
+-- System users; referenced by doneBy/supervisorId/assigneeId in other tables.
+
+-- Audit trail for user profile edits — which fields changed, who changed them,
+-- and notes. Audit log of changes made to a user record.
+tbl_user_activity(
+  activityId         INT(11) PK,
+  updatedFields      VARCHAR(100),  -- changed field names
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME,      -- default current_timestamp()
+  status             ENUM('0','1'), -- soft-delete flag; default '1'; ALWAYS filter WHERE status='1', never use '0'
+  userId             INT(11),       -- FK -> tbl_users.userId, the user whose record was edited
+  notes              VARCHAR(200)
 )
 
-tbl_device(
-  deviceId         INT(11) PK,
-  deviceEndpoint   VARCHAR(100),
-  firmwareVersion  VARCHAR(100),
-  mode             ENUM('sleep','awake','idle'),  -- sleep=Offline,awake=Online,idle=Idle
-  registrationId   VARCHAR(255),
-  registrationDate DATETIME,
-  fenceId          INT(11),
-  isOutOfFence     TINYINT(4),
-  warrantyStartDate DATETIME,
-  warrantyExpiryDate DATETIME,
-  warrantyDuration ENUM('12 months','18 months','24 months'),
-  lastUpdated      DATETIME,
-  status           ENUM('registered','deregistered'),
-  lastAddress      VARCHAR(255)
-)
-
-tbl_device_claim_history(
-  deviceClaimId    INT(11) PK,
-  deviceId         INT(11),
-  warrentyType     VARCHAR(100), --'Electronic Board', 'Casing Set', 'Entire Tracker'
-  doneBy           INT(11),
-  claimNotes       VARCHAR(500),
-  resolveNotes     VARCHAR(500),
-  resolvedDate     DATETIME,
-  createdOn        DATETIME,
-  status           ENUM('0','1','2') -- 0=Resolved / closed claim,1=No active claim / claim available state,2=Claim raised / pending resolution
-)
-
-tbl_device_data(
-  deviceDataId     INT(11) PK,
-  trolleyId        INT(255),
-  deviceEndpoint   VARCHAR(100),
-  firmwareVersion  VARCHAR(100),
-  momentDetection  VARCHAR(100),
-  timestamp        DATETIME,
-  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-  intervalTimeset  INT(11),
-  GPSLatitude      DOUBLE,
-  GPSLongitude     DOUBLE,
-  address          VARCHAR(255),
-  locationSource   VARCHAR(255),
-  OtaTrigger       TINYINT(4),
-  batteryLevel     INT(11),
-  batteryFault     VARCHAR(255)
-)
-
-tbl_device_history(
-  historyId        INT(11) PK,
-  deviceEndpoint   VARCHAR(255),
-  latitude         DOUBLE,
-  longitude        DOUBLE,
-  trolleyId        INT(11),
-  geozoneId        INT(11),
-  geolayerId       INT(11),
-  createdOn        DATETIME,
-  modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-  nestId           INT(11),
-  locationSource   VARCHAR(255),
-  address          VARCHAR(255)
-)
-
-
-tbl_geolayers(
-  geolayerId       INT(11) PK,
-  geolayerName     VARCHAR(100),
-  buildingName     VARCHAR(100),
-  floorNo          VARCHAR(100),
-  createdOn        DATETIME,
-  modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-  boundaryColor    VARCHAR(50)
-)
-
-tbl_geozones(
-  geozoneId        INT(11) PK,
-  geozoneName      VARCHAR(100),
-  tag              VARCHAR(100), --'MTB', 'STCP', 'USIM'
-  tagId            INT(11),
-  geolayerId       INT(11),
-  boundaryColor    VARCHAR(50),
-  createdOn        DATETIME,
-  modifiedOn       DATETIME,
-  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-  type             ENUM('general','cleaning','maintenance'),
-  noOfTrolleys     INT(11)
-)
-
-tbl_nest(
-  nestId           INT(11) PK,
-  nestName         VARCHAR(100),
-  geozoneId        INT(11),
-  geolayerId       INT(11),
-  minTrolleyLimit  INT(11),
-  boundaryColor    VARCHAR(50),
-  createdOn        DATETIME,
-  modifiedOn       DATETIME,
-  status           ENUM('0','1','2'), -- 1=Active,2=Inactive / Deactivated
-  availableTrolly  INT(11)
-)
-
+-- Core trolley inventory. Tracks trolley identity, type (landside/airside), device
+-- assignment, maintenance status, and denormalized latest IoT snapshots (location,
+-- battery, geozone) updated on every device ping/update.
 tbl_trolley(
   trolleyId            INT(11) PK,
   trolleyName          VARCHAR(100),
@@ -280,6 +227,269 @@ tbl_trolley(
   latestDataTimestamp  DATETIME,
   latestIntervalTimeset INT(11)
 )
+-- Denormalized Latest Snapshots: tbl_trolley stores the latest IoT telemetry directly
+-- (latestLatitude, latestBatteryLevel, latestGeozoneId, etc.) to avoid expensive JOINs
+-- on tbl_device_history / tbl_device_data.
+
+-- Audit log for trolley hardware component swaps — tracks pre/post serial number
+-- changes and who performed it.
+tbl_trolley_activity(
+  activityId         INT(11) PK,
+  preSerialNo        VARCHAR(100),  -- device endpoint before swap
+  postSerialNo       VARCHAR(100),  -- device endpoint after swap
+  trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME,
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+)
+-- Records tracker device swap/replacement activities on trolleys.
+
+-- Cleaning event logs - records each time a trolley is cleaned, in which geozone,
+-- by whom, and completion status.
+tbl_cleaning_history(
+  cleaningId         INT(11) PK,
+  trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
+  geozoneId          INT(11),       -- FK -> tbl_geozones.geozoneId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1','2')  -- 0=inactive,1=completed,2=pending
+)
+
+-- Master device registry for physical IoT tracker hardware. Stores endpoint
+-- identifier, warranty, firmware version, spatial coordinate (POINT type with
+-- spatial index), and device mode (sleep/awake/idle).
+tbl_device(
+  deviceId         INT(11) PK,
+  deviceEndpoint   VARCHAR(100),
+  firmwareVersion  VARCHAR(100),
+  mode             ENUM('sleep','awake','idle'),  -- sleep=Offline,awake=Online,idle=Idle
+  registrationId   VARCHAR(255),
+  registrationDate DATETIME,
+  fenceId          INT(11),
+  isOutOfFence     TINYINT(4),
+  warrantyStartDate DATETIME,
+  warrantyExpiryDate DATETIME,
+  warrantyDuration ENUM('12 months','18 months','24 months'),
+  lastUpdated      DATETIME,
+  status           ENUM('registered','deregistered'),
+  lastAddress      VARCHAR(255)
+)
+
+-- Raw telemetry ingested from devices - GPS, Wi-Fi RTT, accelerometer, battery
+-- level - one row per transmission.
+tbl_device_data(
+  deviceDataId     INT(11) PK,
+  trolleyId        INT(255),
+  deviceEndpoint   VARCHAR(100),
+  firmwareVersion  VARCHAR(100),
+  momentDetection  VARCHAR(100),
+  timestamp        DATETIME,
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+  intervalTimeset  INT(11),
+  GPSLatitude      DOUBLE,
+  GPSLongitude     DOUBLE,
+  address          VARCHAR(255),
+  locationSource   VARCHAR(255),
+  OtaTrigger       TINYINT(4),
+  batteryLevel     INT(11),
+  batteryFault     VARCHAR(255)
+)
+
+-- Resolved position history: each ping mapped to a trolley, geozone, geolayer and
+-- nest. Primary source for movement and utilisation KPIs.
+tbl_device_history(
+  historyId        INT(11) PK,
+  deviceEndpoint   VARCHAR(255),
+  latitude         DOUBLE,
+  longitude        DOUBLE,
+  trolleyId        INT(11),
+  geozoneId        INT(11),
+  geolayerId       INT(11),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+  nestId           INT(11),
+  locationSource   VARCHAR(255),
+  address          VARCHAR(255)
+)
+
+-- Audit log for device administrative actions (assign, unassign, register,
+-- deregister). Tracks action type, notes, and who performed it.
+tbl_device_activity(
+  deviceActivityId   INT(11) PK,
+  deviceId           INT(11),       -- FK -> tbl_device.deviceId
+  notes              VARCHAR(500),
+  action             VARCHAR(25),   -- e.g. "Tracker Created"
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  createdOn          DATETIME
+)
+
+-- DEVICE (tracker hardware) warranty claims ONLY — do NOT confuse with
+-- tbl_battery_claim_history (battery claims) or tbl_wifi_claim_history (WiFi
+-- beacon claims); there is no single generic "warranty_claim_history" table,
+-- each asset type has its own dedicated claim history table. Warranty claims
+-- raised against a tracker device and how each claim was resolved. Full claim
+-- lifecycle: reason, claim/resolution notes, resolved date, status
+-- (open/resolved/closed).
+tbl_device_claim_history(
+  deviceClaimId    INT(11) PK,
+  deviceId         INT(11),       -- FK -> tbl_device.deviceId (the tracker device this claim is for)
+  warrentyType     VARCHAR(100), --'Electronic Board', 'Casing Set', 'Entire Tracker'
+  doneBy           INT(11),
+  claimNotes       VARCHAR(500),
+  resolveNotes     VARCHAR(500),
+  resolvedDate     DATETIME,
+  createdOn        DATETIME,
+  status           ENUM('0','1','2') -- 0=Resolved / closed claim,1=No active claim / claim available state,2=Claim raised / pending resolution
+)
+
+-- Battery inventory tracking. Stores serial number and warranty details
+-- (start/end date, duration: 12/18/24 months).
+tbl_battery(
+  batteryId        INT(11) PK,
+  serialNo         VARCHAR(100),
+  warrantyStartDate DATETIME,
+  warrantyExpiryDate DATETIME,
+  warrantyDuration ENUM('12 months','18 months','24 months'),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1') -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+)
+
+-- Audit log for battery record changes — which fields updated, by whom. Audit
+-- log of create/update actions performed on battery records.
+tbl_battery_activity(
+  batteryActivityId  INT(11) PK,
+  batteryId          INT(11),       -- FK -> tbl_battery.batteryId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  notes              VARCHAR(200),
+  updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Battery Pack Created"]
+  createdOn          DATETIME,
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+)
+
+-- BATTERY warranty claims ONLY — do NOT confuse with tbl_device_claim_history
+-- (tracker device claims) or tbl_wifi_claim_history (WiFi beacon claims).
+-- Warranty claims raised against a battery and how each claim was resolved.
+-- Same claim lifecycle as device claims.
+tbl_battery_claim_history(
+  batteryClaimId     INT(11) PK,
+  batteryId          INT(11),       -- FK -> tbl_battery.batteryId
+  reason             VARCHAR(100),  -- reason for warranty claim e.g. "Battery Failure"
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  claimNotes         VARCHAR(500),
+  resolveNotes       VARCHAR(500),
+  resolvedDate       DATETIME,
+  createdOn          DATETIME,
+  status             ENUM('0','1','2')  -- 0=Resolved / closed claim,1=No active claim / claim available state,2=Claim raised / pending resolution
+)
+
+-- WiFi access point inventory. Stores SSID name and warranty info.
+tbl_wifi(
+  wifiId             INT(11) PK,
+  wifiName           VARCHAR(100),  -- WiFi beacon identifier e.g. "BC1-F412FA89909D"
+  warrantyStartDate  DATETIME,
+  warrantyExpiryDate DATETIME,
+  warrantyDuration   ENUM('12 months','18 months','24 months'),
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+)
+
+-- Audit log of create/update actions performed on Wi-Fi access point records.
+tbl_wifi_activity(
+  wifiActivityId     INT(11) PK,
+  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  notes              VARCHAR(200),
+  updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Wifi Beacon Created"]
+  createdOn          DATETIME,
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+)
+
+-- WIFI (access point beacon) warranty claims ONLY — do NOT confuse with
+-- tbl_device_claim_history (tracker device claims) or tbl_battery_claim_history
+-- (battery claims). Warranty claim records for WiFi hardware. Same lifecycle as
+-- device/battery claims. Warranty claims raised against a Wi-Fi access point
+-- and how each was resolved.
+tbl_wifi_claim_history(
+  wifiClaimId        INT(11) PK,
+  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
+  reason             VARCHAR(100),  -- e.g. "Wifi Beacon Failure"
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  claimNotes         VARCHAR(500),
+  resolveNotes       VARCHAR(500),
+  resolvedDate       DATETIME,
+  createdOn          DATETIME,
+  status             ENUM('0','1','2')  -- 0=No active claim / claim available state,1=Resolved / closed claim,2=Claim raised / pending resolution
+)
+
+-- Building/floor definitions. Stores building name, floor number, and Victor
+-- assignment (MTB/CP/SAT).
+tbl_geolayers(
+  geolayerId       INT(11) PK,
+  geolayerName     VARCHAR(100),
+  buildingName     VARCHAR(100),
+  floorNo          VARCHAR(100),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+  boundaryColor    VARCHAR(50)
+)
+
+-- Defined zones within a geolayer (e.g., Gate A, Waiting Area, Security Zone).
+-- Supports types: general, cleaning, maintenance. Contains boundary polygon,
+-- color, tag, and trolley count. FK to tbl_geolayers.
+tbl_geozones(
+  geozoneId        INT(11) PK,
+  geozoneName      VARCHAR(100),
+  tag              VARCHAR(100), --'MTB', 'STCP', 'USIM'
+  tagId            INT(11),
+  geolayerId       INT(11),
+  boundaryColor    VARCHAR(50),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+  type             ENUM('general','cleaning','maintenance'),
+  noOfTrolleys     INT(11)
+)
+
+-- Tags/labels for geozone categorization and filtering. Lookup of tag labels
+-- that can be applied to geozones.
+tbl_tags(
+  tagId              INT(11) PK,
+  tag                VARCHAR(100),  -- e.g. "MTB", "STCP", "ALPS", "USIM"
+  createdOn          DATETIME,
+  modifiedOn         DATETIME,
+  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+)
+
+-- Nest/docking station definitions within a geozone. Trolley nests (parking
+-- bays) inside a geozone, with minimum stock level and live availability. FK to
+-- tbl_geozones and tbl_geolayers.
+tbl_nest(
+  nestId           INT(11) PK,
+  nestName         VARCHAR(100),
+  geozoneId        INT(11),
+  geolayerId       INT(11),
+  minTrolleyLimit  INT(11),
+  boundaryColor    VARCHAR(50),
+  createdOn        DATETIME,
+  modifiedOn       DATETIME,
+  status           ENUM('0','1','2'), -- 1=Active,2=Inactive / Deactivated
+  availableTrolly  INT(11)
+)
+
+-- Audit log of nest activate / deactivate / update actions.
+tbl_nest_activity_history(
+  nestHistoryId      INT(11) PK,
+  nestId             INT(11),       -- FK -> tbl_nest.nestId
+  doneBy             INT(11),       -- FK -> tbl_users.userId
+  notes              VARCHAR(500),
+  createdOn          DATETIME,
+  status             ENUM('0','1','2')  --1=Active,2=Inactive / Deactivated
+)
 
 tbl_trolley_maintenance(
   maintenanceId    INT(11) PK,
@@ -295,6 +505,8 @@ tbl_trolley_maintenance(
   trolleyId        INT(11)
 )
 
+-- Active alert records. Live alert records raised against a trolley (out-of-zone,
+-- battery, idle/scattered) with assignment and resolution state.
 tbl_alerts(
   alertId          INT(11) PK,
   alertName        VARCHAR(100), --'SCATTERED TROLLEY', 'TROLLEY OUT OF ZONE', 'BATTERY ALERT'
@@ -307,6 +519,9 @@ tbl_alerts(
   assigneeId       INT(11)
 )
 
+-- Audit trail for the complete alert lifecycle — title changes, notes additions,
+-- assignments, and who performed each action. Audit trail of every action taken
+-- on an alert - raised, assigned, re-assigned, notes added, resolved.
 tbl_alerts_history(
   historyId        INT(11) PK,
   alertId          INT(11),
@@ -319,6 +534,33 @@ tbl_alerts_history(
   type             VARCHAR(50)
 )
 
+-- Deployment history — which firmware version was sent to which device
+-- endpoint/geozone and when. Firmware version reported by each device over
+-- time, per geozone.
+tbl_device_version_history(
+  historyId          INT(11) PK,
+  geozoneId          INT(11),       -- FK -> tbl_geozones.geozoneId
+  deviceEndpoint     VARCHAR(100),  -- FK -> tbl_device.deviceEndpoint, NOT NULL
+  version            VARCHAR(100),  -- firmware version string, NOT NULL
+  createdOn          DATETIME,      -- NOT NULL, default current_timestamp()
+  status             ENUM('0','1')  -- soft-delete flag; default '1'; ALWAYS filter WHERE status='1', never use '0'
+)
+
+-- Device sync interval configuration. Defines how frequently devices should
+-- report telemetry data and the expected battery life at that interval.
+-- Configuration table mapping a battery-life band to the reporting interval
+-- devices should use.
+tbl_device_sync_time(
+  id                 INT(11) PK,
+  createdOn          DATETIME,
+  status             ENUM('0','1'),  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
+  batteryLife        VARCHAR(100),  -- estimated battery life string e.g. "3 days 19 hours"
+  interval           INT(11)        -- sync interval in seconds e.g. 300, 900
+)
+-- The Active record (status=1) is the current sync setting.
+
+-- Shift roster header. Stores shift date, type (day/night), and total required
+-- pushers/workers planned.
 tbl_duty_roster(
   rosterId      INT(11) PK,
   shift         ENUM('day','night'), -- day=Day Shift,night=Night Shift
@@ -330,60 +572,10 @@ tbl_duty_roster(
   shiftDate     DATETIME
 )
 
-tbl_battery_activity(
-  batteryActivityId  INT(11) PK,
-  batteryId          INT(11),       -- FK -> tbl_battery.batteryId
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  notes              VARCHAR(200),
-  updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Battery Pack Created"]
-  createdOn          DATETIME,
-  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-)
--- Tracks every change/action made on a battery pack.
-
-tbl_battery_claim_history(
-  batteryClaimId     INT(11) PK,
-  batteryId          INT(11),       -- FK -> tbl_battery.batteryId
-  reason             VARCHAR(100),  -- reason for warranty claim e.g. "Battery Failure"
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  claimNotes         VARCHAR(500),
-  resolveNotes       VARCHAR(500),
-  resolvedDate       DATETIME,
-  createdOn          DATETIME,
-  status             ENUM('0','1','2')  -- 0=Resolved / closed claim,1=No active claim / claim available state,2=Claim raised / pending resolution
-)
--- Records warranty claims raised against battery packs.
-
-tbl_cleaning_history(
-  cleaningId         INT(11) PK,
-  trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
-  geozoneId          INT(11),       -- FK -> tbl_geozones.geozoneId
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  createdOn          DATETIME,
-  modifiedOn         DATETIME,
-  status             ENUM('0','1','2')  -- 0=inactive,1=completed,2=pending
-)
--- Records trolley cleaning events per geozone.
-
-tbl_device_activity(
-  deviceActivityId   INT(11) PK,
-  deviceId           INT(11),       -- FK -> tbl_device.deviceId
-  notes              VARCHAR(500),
-  action             VARCHAR(25),   -- e.g. "Tracker Created"
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  createdOn          DATETIME
-)
--- Audit log of actions performed on tracker/device hardware.
-
-tbl_device_sync_time(
-  id                 INT(11) PK,
-  createdOn          DATETIME,
-  status             ENUM('0','1'),  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-  batteryLife        VARCHAR(100),  -- estimated battery life string e.g. "3 days 19 hours"
-  interval           INT(11)        -- sync interval in seconds e.g. 300, 900
-)
--- Configuration records for device sync intervals; the Active record (status=1) is the current sync setting.
-
+-- Individual team assignments within a roster. Stores team name, Victor code,
+-- supervisor ID, and actual pusher/worker headcounts. FK to tbl_duty_roster.
+-- Per-team duty entry inside a roster - victor/zone, team name, supervisor and
+-- headcount.
 tbl_duty_details(
   dutyId             INT(11) PK,
   victor             VARCHAR(10),   -- area/zone code e.g. "MTB", "CP"
@@ -396,46 +588,14 @@ tbl_duty_details(
   modifiedOn         DATETIME,
   status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
--- Duty assignments linking a team to a roster shift with headcount details.
 
-tbl_firmware_trigger_history(
-  id                 INT(11) PK,
-  deviceEndpoint     VARCHAR(100),  -- FK -> tbl_device.deviceEndpoint
-  previousVersion    VARCHAR(100),
-  updateVersion      VARCHAR(100),
-  triggeredTime      DATETIME,
-  geozoneId          INT(11),       -- FK -> tbl_geozones.geozoneId
-  updateStatus       ENUM('Triggered','OTA-WRITE-SUCCESS','OTA-WRITE-FAILED','Completed','UpdatedAnotherGeozone')
-)
--- History of OTA firmware update triggers per device.
-
-tbl_firmware_versions(
-  versionId          INT(11) PK,
-  version            VARCHAR(100),  -- firmware version string e.g. "TR1@17042026"
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  document           VARCHAR(500),  -- S3 URL to firmware file
-  createdOn          DATETIME,
-  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-)
--- Registry of available firmware versions that can be pushed via OTA.
-
+-- Site level outer geofence boundary.
 tbl_geofence(
   id                 INT(11) PK,
   name               VARCHAR(255),
   boundary           POLYGON,       -- excluded from SELECT per rules
   status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
 )
--- Defines named geofence boundaries for tracking out-of-fence events.
-
-tbl_nest_activity_history(
-  nestHistoryId      INT(11) PK,
-  nestId             INT(11),       -- FK -> tbl_nest.nestId
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  notes              VARCHAR(500),
-  createdOn          DATETIME,
-  status             ENUM('0','1','2')  --1=Active,2=Inactive / Deactivated
-)
--- Audit log of changes/actions performed on nests.
 
 tbl_notifications(
   id                 INT(11) PK,
@@ -456,102 +616,6 @@ tbl_registered_device(
   GPSMACAddress      VARCHAR(100)   -- excluded from SELECT per rules
 )
 -- Registry of physically registered tracker devices.
-
-tbl_reports(
-  reportId           INT(11) PK,
-  reportName         VARCHAR(255),
-  reportModuleName   ENUM('trolley','dutyroster','alert'),
-  reportStartDate    DATETIME,
-  reportEndDate      DATETIME,
-  reportFile         VARCHAR(255),  -- S3 URL to generated report file
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  createdOn          DATETIME,
-  modifiedOn         DATETIME,
-  status             ENUM('0','1'), -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-  reportStatus       ENUM('processing','failed','download','unavailable','null')
-)
--- Records of generated reports for trolley, duty roster, and alert modules.
-
-tbl_tags(
-  tagId              INT(11) PK,
-  tag                VARCHAR(100),  -- e.g. "MTB", "STCP", "ALPS", "USIM"
-  createdOn          DATETIME,
-  modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-)
--- Lookup table for location/area tags used in geozones and duty assignments.
-
-tbl_trolley_activity(
-  activityId         INT(11) PK,
-  preSerialNo        VARCHAR(100),  -- device endpoint before swap
-  postSerialNo       VARCHAR(100),  -- device endpoint after swap
-  trolleyId          INT(11),       -- FK -> tbl_trolley.trolleyId
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  createdOn          DATETIME,
-  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-)
--- Records tracker device swap/replacement activities on trolleys.
-
-
-tbl_users(
-  userId             INT(11) PK,
-  firstName          VARCHAR(50),
-  lastName           VARCHAR(50),
-  activeStatus       ENUM('invite','active') -- human-readable; use AS-IS, no CASE needed)
-  createdOn          DATETIME,
-  status             ENUM('0','1') -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-)
--- System users; referenced by doneBy/supervisorId/assigneeId in other tables.
-
-tbl_wifi(
-  wifiId             INT(11) PK,
-  wifiName           VARCHAR(100),  -- WiFi beacon identifier e.g. "BC1-F412FA89909D"
-  warrantyStartDate  DATETIME,
-  warrantyExpiryDate DATETIME,
-  warrantyDuration   ENUM('12 months','18 months','24 months'),
-  createdOn          DATETIME,
-  modifiedOn         DATETIME,
-  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-)
--- Registry of WiFi beacon hardware units with warranty tracking.
-
-tbl_wifi_activity(
-  wifiActivityId     INT(11) PK,
-  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  notes              VARCHAR(200),
-  updatedFields      VARCHAR(200),  -- JSON array of changed field names e.g. ["Wifi Beacon Created"]
-  createdOn          DATETIME,
-  status             ENUM('0','1')  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-)
--- Audit log of changes/actions performed on WiFi beacons.
-
-tbl_wifi_claim_history(
-  wifiClaimId        INT(11) PK,
-  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
-  reason             VARCHAR(100),  -- e.g. "Wifi Beacon Failure"
-  doneBy             INT(11),       -- FK -> tbl_users.userId
-  claimNotes         VARCHAR(500),
-  resolveNotes       VARCHAR(500),
-  resolvedDate       DATETIME,
-  createdOn          DATETIME,
-  status             ENUM('0','1','2')  -- 0=No active claim / claim available state,1=Resolved / closed claim,2=Claim raised / pending resolution
-)
--- Records warranty claims raised against WiFi beacon units.
-
-tbl_wifi_fingerprint(
-  fingerprintId      INT(11) PK,
-  latitude           DOUBLE,
-  longitude          DOUBLE,
-  status             ENUM('0','1'),  -- soft-delete flag; ALWAYS filter WHERE status='1', never use '0'
-  wifiId             INT(11),       -- FK -> tbl_wifi.wifiId
-  geolayerId         INT(11),       -- FK -> tbl_geolayers.geolayerId
-  createdOn          DATETIME,
-  modifiedOn         DATETIME,
-  mac                VARCHAR(100),  -- MAC address of the beacon e.g. "f4:12:fa:89:90:9d"
-  type               ENUM('UTW','OTHERS')
-)
--- Stores physical location fingerprints of WiFi beacons used for indoor positioning.
 
 RELATIONSHIPS
 
@@ -584,53 +648,17 @@ tbl_device_activity.deviceId=tbl_device.deviceId
 tbl_device_activity.doneBy=tbl_users.userId
 tbl_duty_details.rosterId=tbl_duty_roster.rosterId
 tbl_duty_details.supervisorId=tbl_users.userId
-tbl_firmware_trigger_history.deviceEndpoint=tbl_device.deviceEndpoint
-tbl_firmware_trigger_history.geozoneId=tbl_geozones.geozoneId
-tbl_firmware_versions.doneBy=tbl_users.userId
+tbl_user_activity.userId=tbl_users.userId
+tbl_user_activity.doneBy=tbl_users.userId
+tbl_device_version_history.deviceEndpoint=tbl_device.deviceEndpoint
+tbl_device_version_history.geozoneId=tbl_geozones.geozoneId
 tbl_nest_activity_history.nestId=tbl_nest.nestId
 tbl_nest_activity_history.doneBy=tbl_users.userId
 tbl_notifications.userId=tbl_users.userId
-tbl_reports.doneBy=tbl_users.userId
 tbl_trolley_activity.trolleyId=tbl_trolley.trolleyId
 tbl_trolley_activity.doneBy=tbl_users.userId
 tbl_wifi_activity.wifiId=tbl_wifi.wifiId
 tbl_wifi_activity.doneBy=tbl_users.userId
 tbl_wifi_claim_history.wifiId=tbl_wifi.wifiId
 tbl_wifi_claim_history.doneBy=tbl_users.userId
-tbl_wifi_fingerprint.wifiId=tbl_wifi.wifiId
-tbl_wifi_fingerprint.geolayerId=tbl_geolayers.geolayerId
-
-QUERY_ROUTING
-
-current_location,current_battery -> tbl_trolley
-historical_location,idle -> tbl_device_history
-battery_trend,battery_drain -> tbl_device_data
-zone,floor -> tbl_geozones,tbl_geolayers
-nest_availability -> tbl_nest
-maintenance -> tbl_trolley_maintenance
-battery_warranty -> tbl_battery
-battery_activity,battery_log -> tbl_battery_activity
-battery_claim -> tbl_battery_claim_history
-device_warranty,claims -> tbl_device,tbl_device_claim_history
-device_activity,tracker_log -> tbl_device_activity
-device_sync,sync_interval -> tbl_device_sync_time
-active_alerts -> tbl_alerts(status=0)
-alert_history -> tbl_alerts_history
-shift_headcount,roster -> tbl_duty_roster
-duty_assignment,team -> tbl_duty_details
-cleaning,cleaned -> tbl_cleaning_history
-firmware_update,ota -> tbl_firmware_trigger_history
-firmware_version -> tbl_firmware_versions
-geofence -> tbl_geofence
-nest_activity -> tbl_nest_activity_history
-notifications,user_alerts -> tbl_notifications
-registered_device -> tbl_registered_device
-reports,generated_report -> tbl_reports
-tags -> tbl_tags
-trolley_swap,device_swap -> tbl_trolley_activity
-users,staff -> tbl_users
-wifi_beacon,wifi_warranty -> tbl_wifi
-wifi_activity,wifi_log -> tbl_wifi_activity
-wifi_claim -> tbl_wifi_claim_history
-wifi_fingerprint,indoor_positioning -> tbl_wifi_fingerprint
 """

@@ -1,7 +1,6 @@
 import json
 import boto3
-
-from config import BEDROCK_MODEL_ID_1, BEDROCK_MODEL_ID_2
+from config import BEDROCK_MODEL_ID_1, BEDROCK_MODEL_ID_2,AWS_ACCESS_KEY,AWS_SECRET_KEY
 
 from schema_context import SCHEMA_CONTEXT
 
@@ -12,7 +11,14 @@ _bedrock_client = None
 def get_bedrock_client():
     global _bedrock_client
     if _bedrock_client is None:
-        _bedrock_client = boto3.client(service_name="bedrock-runtime")
+        _bedrock_client = boto3.client(
+    service_name="bedrock-runtime",
+    region_name="ap-southeast-1",
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    # Optional: Only if you're using temporary credentials
+    # aws_session_token="YOUR_SESSION_TOKEN"
+)
     return _bedrock_client
 
 
@@ -127,14 +133,23 @@ def narrate(question, df):
     result = _invoke_chat(
         system_prompt=(
             "You are a trolley management assistant. "
-            "The Data below is the direct SQL query result that already answers the Question — do NOT say you lack data or need more information. "
-            "Interpret the data and answer the question in 1-5 sentences."
-            "no technical jargon, no column names, no SQL terms. "
-            "NEVER reference the source of the data — do not say 'based on the query result', "
-            "'based on the database', 'according to the data', 'the query shows', 'the results indicate', "
-            "or any similar phrase. State the answer directly as a fact, as if you already know it. "
-            "For example, instead of 'Based on the query result, there is 1 user in Invited status', "
-            "say 'There is 1 user who has been invited but hasn't logged in yet.'"
+            "Below is the data needed to answer the question — treat it as something you already know, "
+            "not something you looked up. Do NOT say you lack data or need more information. "
+            "Answer the question in 1-5 sentences, in plain, natural, everyday language, "
+            "exactly as a helpful human colleague would explain it to someone with no technical background. "
+
+            "STRICT RULES: "
+            "1. Never mention or hint at where the information came from — no 'query', 'database', 'data', "
+            "'record', 'table', 'system', 'results', 'according to', 'based on', or any similar reference. "
+            "2. Never use technical or SQL-related terms — no column names, IDs, status codes, or field names "
+            "verbatim; translate them into everyday words (e.g. say 'invited' instead of 'status = invited'). "
+            "3. Speak directly and confidently, as if stating a known fact. "
+            "4. Do not explain your reasoning or mention that you are interpreting anything — just state the answer. "
+
+            "Example: "
+            "Instead of 'Based on the query result, there is 1 user in Invited status' or "
+            "'The data shows 1 invited user', say: "
+            "'There is 1 user who has been invited but hasn't logged in yet.'"
         ),
         user_content=f"Question: {question}\n\nData (query result):\n{txt}",
         temperature=0,
