@@ -11,6 +11,22 @@ RULES:
 * Use ONLY tables and columns listed below.
 * Never invent tables or columns.
 * JOIN only using RELATIONSHIPS.
+* KEEP QUERIES MINIMAL — do not overcomplicate: use the fewest JOINs and subqueries
+  needed to answer the question, and never chain through multiple intermediate
+  tables when a shorter, more direct path already gives the same information.
+  - Before adding a JOIN, check if the needed value is already available as a
+    denormalized column on a table already in the query (e.g. tbl_trolley already
+    stores latestBatteryLevel, latestGeozoneId, latestGeolayerId, latestNestId,
+    latestLatitude/Longitude — use these directly instead of joining out to
+    tbl_device_data / tbl_device_history for "latest" values).
+  - Do not join through an unrelated table just to reach a column when a direct
+    FK relationship to the target table already exists in RELATIONSHIPS.
+  - Do not add a table to the query unless a column from it is actually needed in
+    SELECT, WHERE, or an essential JOIN condition.
+  - Prefer a single MAX(...) correlated subquery (per the LATEST/CURRENT rule)
+    over multi-table subquery chains.
+  - If a simpler query returns the same information without loss, always choose
+    the simpler query.
 * Exclude columns:
   boundary,floorBoundary,coordinate,wifiRTT,Accelerometer,wifiGeoLocation,imsi,floorMap,victor,GPSMACAddress,boundaryColor
 * Whenever an enum column whose values are numeric codes (0/1/2) appears in SELECT, always wrap it with a CASE expression to show the human-readable label instead of the raw code. Use exactly these mappings:
@@ -125,6 +141,28 @@ RULES:
 * LATEST / CURRENT: When the user asks for the "latest", "current", "most recent", or "last" record of something, use a subquery with MAX(createdOn) — or MAX of the most relevant DATETIME column (e.g. timestamp, modifiedOn, lastUpdated) — to filter to the single most-recent row. Example pattern:
   WHERE t.createdOn = (SELECT MAX(t2.createdOn) FROM <same_table> t2 WHERE t2.<key_col> = t.<key_col>)
   Never use LIMIT 1 ORDER BY as a substitute; the MAX subquery approach is required.
+  EXCEPTION: for a trolley's current/latest device or battery snapshot, do not build
+  this MAX subquery at all — see QUERY SIMPLICITY below, use tbl_trolley's
+  denormalized latest* columns / latestDeviceDataId instead.
+* QUERY SIMPLICITY (mandatory): Keep every query as short and simple as possible.
+  Join only the tables strictly required to answer the question — never add extra
+  tables, columns, subqueries, or a GROUP BY "for context" or "to be safe". A
+  simpler query that returns the same information is always preferred over a longer
+  one. Concretely:
+  - For a trolley's CURRENT/latest battery or device info, do NOT join
+    tbl_trolley -> tbl_device -> tbl_device_data with a MAX(deviceDataId) correlated
+    subquery. tbl_trolley already stores this as a denormalized snapshot
+    (latestDeviceDataId, latestBatteryLevel, latestDataTimestamp, latestGeozoneId,
+    latestGeolayerId, latestNestId, etc.). Join directly:
+    tbl_trolley.latestDeviceDataId = tbl_device_data.deviceDataId — never re-derive
+    the latest row with a correlated MAX subquery when tbl_trolley already points to it.
+  - Do not chain a join through a table only to reach a column on another table when
+    a more direct FK path exists (e.g. do not go tbl_trolley -> tbl_device ->
+    tbl_device_data just to reach a battery link if a shorter path is available).
+  - Only add GROUP BY when an aggregate function (COUNT/SUM/AVG/MIN/MAX) is actually
+    used — a direct one-row-per-key join needs no GROUP BY.
+  - Do not add WHERE conditions, columns, or joins the user did not ask for and that
+    are not required to resolve status filters or display-name resolution.
 * TROLLEY OUTSIDE / INSIDE GEOZONE: Keep these simple — do NOT add joins or extra
   conditions.
   - "trolley(s) outside geozone" → SELECT COUNT(*) FROM tbl_trolley WHERE status='1' AND latestGeozoneId='0';
@@ -162,6 +200,15 @@ RULES:
 * Never use DELETE,UPDATE,INSERT,DROP,ALTER,TRUNCATE.
 * Output must start with SELECT.
 * Generate exactly ONE SQL statement per question — never output multiple queries separated by semicolons, newlines, or any delimiter.
+* KEEP QUERIES SIMPLE — do not overbuild: use the minimum number of JOINs and
+  subqueries needed to answer the question. Do not chain through extra
+  intermediate tables when a direct relationship already exists in
+  RELATIONSHIPS. Do not add a JOIN, subquery, or column unless it is actually
+  needed to answer what was asked. Prefer the most direct path between tables;
+  avoid multi-hop joins when a shorter join path is available. A query that
+  cannot realistically run efficiently against the database is a failure even
+  if it is technically correct — favor the simplest query that fully answers
+  the question without losing any requested information.
 * When the user refers to a trolley without specifying whether it is an ID, name, or serial number, infer the correct column from the value format:
   - Pure integer (e.g. "trolley 2", "trolley 105") → filter on tbl_trolley.trolleyId
   - Starts with "TR1-" or "big digit number" (e.g. "TR1-D098", "70007174-0") → filter on tbl_trolley.serialNo
@@ -178,6 +225,9 @@ RULES:
   - Entity references (trolley/device/geozone/geolayer/nest/user/geofence/wifi/tags) use their DISPLAY-NAME RESOLUTION column in SELECT, not the raw ID.
   - For firmware-related questions, deviceEndpoint in SELECT uses DISTINCT.
   - For claim/warranty questions, the correct asset-specific claim_history table (device/battery/wifi) was used, not confused with another.
+  - The query uses the minimum necessary JOINs/subqueries — no unneeded tables or columns.
+  - No unnecessary JOINs or tables were added — check if a denormalized column already gives the answer more directly.
+  - No unnecessary joins, subqueries, or GROUP BY were added — the query uses the simplest path (including tbl_trolley's denormalized latest* columns where applicable) to answer the question.
   If verification fails, correct and retry silently — never expose the reasoning.
 
 TABLES
