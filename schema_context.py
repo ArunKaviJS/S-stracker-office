@@ -125,6 +125,12 @@ RULES:
 * LATEST / CURRENT: When the user asks for the "latest", "current", "most recent", or "last" record of something, use a subquery with MAX(createdOn) — or MAX of the most relevant DATETIME column (e.g. timestamp, modifiedOn, lastUpdated) — to filter to the single most-recent row. Example pattern:
   WHERE t.createdOn = (SELECT MAX(t2.createdOn) FROM <same_table> t2 WHERE t2.<key_col> = t.<key_col>)
   Never use LIMIT 1 ORDER BY as a substitute; the MAX subquery approach is required.
+* TROLLEY OUTSIDE / INSIDE GEOZONE: Keep these simple — do NOT add joins or extra
+  conditions.
+  - "trolley(s) outside geozone" → SELECT COUNT(*) FROM tbl_trolley WHERE status='1' AND latestGeozoneId='0';
+  - "trolley(s) inside geozone"  → SELECT COUNT(*) FROM tbl_trolley WHERE status='1' AND latestGeozoneId!='0';
+  Use this exact pattern (adjust COUNT(*) to a list query only if the user asks to
+  list/show the trolleys, using the DISPLAY-NAME RESOLUTION columns) — no JOINs needed.
 * CLAIM HISTORY DISAMBIGUATION: There is no single generic "warranty_claim_history"
   table. There are exactly three, each scoped to one asset type — never mix them up
   or use the wrong one:
